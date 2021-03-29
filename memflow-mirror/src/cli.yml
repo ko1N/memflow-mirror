@@ -1,0 +1,19 @@
+name: memflow-mirror
+version: "0.1"
+author: "ko1N"
+about: memflow-mirror cli
+
+args:
+- verbose:
+    short: v
+    multiple: true
+    help: sets the level of verbosity
+- connector:
+    long: connector
+    takes_value: true
+    required: true
+    help: the connector to be loaded from the inventory
+- args:
+    short: a
+    long: args
+    takes_value: true
