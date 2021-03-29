@@ -476,20 +476,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
-name = "dxgcap"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a3f3df51c509e7c8d2807c63abfecdea1a83def81baec83d68c6f5bb8ac654"
-dependencies = [
- "winapi 0.3.9",
- "wio",
-]
-
-[[package]]
 name = "dxgi-capture"
 version = "0.1.0"
 dependencies = [
- "dxgcap",
+ "winapi 0.3.9",
+ "wio",
 ]
 
 [[package]]
