@@ -28,7 +28,7 @@ fn main() {
         }
     }
 
-    let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
+    let mut dxgi = DXGIManager::new(10).expect("unable to create dxgi manager");
     let geometry = dxgi.geometry();
     println!("geometry: {:?}", geometry);
     unsafe {
@@ -47,17 +47,8 @@ fn main() {
     let start = Instant::now();
     let mut frames = 0;
     loop {
-        if let Ok(mut frame) = dxgi.capture_frame() {
-            // frame captured
-            //println!("px(0,0) = {:?}", frame.0[0]);
-            for pixel in frame.0.iter_mut() {
-                // TODO: hacky conversion to RGBA8
-                let r = pixel.r;
-                let b = pixel.b;
-                pixel.b = r;
-                pixel.r = b;
-            }
-
+        if let Ok(frame) = dxgi.capture_frame() {
+            // frame captured, put into global buffer
             unsafe {
                 if let Some(current_frame) = &mut CURRENT_FRAME {
                     current_frame.copy_from_slice(frame.0.as_slice());
