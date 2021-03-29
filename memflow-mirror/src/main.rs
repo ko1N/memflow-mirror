@@ -78,6 +78,14 @@ fn main() {
 
     let start = Instant::now();
     let mut frames = 0;
+
+    // create texture
+    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+        &frame_buffer[..],
+        (width as u32, height as u32),
+    );
+    let texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
+
     loop {
         let mut frame = wnd.frame();
 
@@ -85,10 +93,6 @@ fn main() {
             .virt_mem()
             .virt_read_into(frame_addr, &mut frame_buffer[..])
             .unwrap();
-
-        // TODO: inefficient af
-        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&frame_buffer[..], (width as u32, height as u32));
-        let texture = glium::texture::Texture2d::new(&frame.window.display, image).unwrap();
 
         /*
         frame.draw_text(
@@ -99,6 +103,19 @@ fn main() {
         );
         */
 
+        let new_image = glium::texture::RawImage2d::from_raw_rgba(
+            frame_buffer.clone(),
+            (width as u32, height as u32),
+        );
+        texture.write(
+            glium::Rect {
+                left: 0,
+                bottom: 0,
+                width: width as u32,
+                height: height as u32,
+            },
+            new_image,
+        );
         frame.draw_texture(&texture);
 
         if !frame.end() {
@@ -106,7 +123,7 @@ fn main() {
         }
 
         frames += 1;
-        if (frames % 1000) == 0 {
+        if (frames % 100) == 0 {
             let elapsed = start.elapsed().as_millis() as f64;
             if elapsed > 0.0 {
                 println!("{} fps", (f64::from(frames)) / elapsed * 1000.0);

@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use log::{info, warn};
 
-use glium::{backend::Facade, implement_vertex, Surface, uniform, texture::Texture2d};
+use glium::{backend::Facade, implement_vertex, texture::SrgbTexture2d, uniform, Surface};
 use glium_text_rusttype as glium_text;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use sdl2::{self, video::SwapInterval};
@@ -56,8 +56,8 @@ impl Window {
             .build_glium()
             .unwrap();
 
-        // vsync
-        //video_subsystem.gl_set_swap_interval(SwapInterval::Immediate);
+        // disable vsync
+        video_subsystem.gl_set_swap_interval(SwapInterval::Immediate);
 
         let event_pump = sdl.event_pump().unwrap();
 
@@ -173,7 +173,7 @@ impl<'a> WindowFrame<'a> {
         .unwrap();
     }
 
-    pub fn draw_texture(&mut self, texture: &Texture2d) {
+    pub fn draw_texture(&mut self, texture: &SrgbTexture2d) {
         #[derive(Copy, Clone)]
         struct Vertex {
             position: [f32; 2],
@@ -181,10 +181,22 @@ impl<'a> WindowFrame<'a> {
         }
         implement_vertex!(Vertex, position, tex_coords);
 
-        let vertex1 = Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] };
-        let vertex2 = Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] };
-        let vertex3 = Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] };
-        let vertex4 = Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] };
+        let vertex1 = Vertex {
+            position: [-1.0, 1.0],
+            tex_coords: [0.0, 0.0],
+        };
+        let vertex2 = Vertex {
+            position: [1.0, 1.0],
+            tex_coords: [1.0, 0.0],
+        };
+        let vertex3 = Vertex {
+            position: [1.0, -1.0],
+            tex_coords: [1.0, 1.0],
+        };
+        let vertex4 = Vertex {
+            position: [-1.0, -1.0],
+            tex_coords: [0.0, 1.0],
+        };
         let shape = vec![vertex1, vertex2, vertex3, vertex4];
 
         let uniforms = uniform! {
@@ -196,7 +208,9 @@ impl<'a> WindowFrame<'a> {
         let indices = glium::IndexBuffer::new(
             &self.window.display,
             glium::index::PrimitiveType::TrianglesList,
-            &indices_data).unwrap();
+            &indices_data,
+        )
+        .unwrap();
 
         self.frame
             .draw(
