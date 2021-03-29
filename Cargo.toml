@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "memflow-mirror",
+    "dxgi-capture",
+]
+default-members = [
+    "memflow-mirror",
+    "dxgi-capture",
+]
