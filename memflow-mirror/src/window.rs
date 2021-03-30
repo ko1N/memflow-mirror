@@ -47,7 +47,7 @@ fn load_shader_program<F: Facade + ?Sized, P: AsRef<Path>>(
 
 #[allow(unused)]
 impl Window {
-    pub fn new() -> Self {
+    pub fn new(vsync: bool) -> Self {
         let sdl = sdl2::init().unwrap();
         let video_subsystem = sdl.video().unwrap();
         let display = video_subsystem
@@ -56,8 +56,10 @@ impl Window {
             .build_glium()
             .unwrap();
 
-        // disable vsync
-        video_subsystem.gl_set_swap_interval(SwapInterval::Immediate);
+        if !vsync {
+            // disable vsync
+            video_subsystem.gl_set_swap_interval(SwapInterval::Immediate);
+        }
 
         let event_pump = sdl.event_pump().unwrap();
 

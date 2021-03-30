@@ -8,10 +8,10 @@ use dxgi::{DXGIManager, BGRA8};
 
 #[repr(C)]
 pub struct GlobalFrameBuffer {
-    _marker: [u8; 8], // 0x0
+    _marker: [u8; 8],           // 0x0
     resolution: (usize, usize), // 0x8
-    frame_counter: u32, // 0x18
-    frame_buffer: Vec<BGRA8>, // 0x20
+    frame_counter: u32,         // 0x18
+    frame_buffer: Vec<BGRA8>,   // 0x20
 }
 
 // TODO: marker
@@ -57,7 +57,9 @@ fn main() {
             // frame captured, put into global buffer
             unsafe {
                 if let Some(global_frame) = &mut GLOBAL_FRAME_BUFFER {
-                    global_frame.frame_buffer.copy_from_slice(frame.0.as_slice());
+                    global_frame
+                        .frame_buffer
+                        .copy_from_slice(frame.0.as_slice());
                     global_frame.resolution = frame.1;
                     global_frame.frame_counter = frame_counter;
                 }

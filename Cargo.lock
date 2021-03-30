@@ -948,6 +948,7 @@ dependencies = [
  "log",
  "memflow",
  "notify",
+ "regex",
  "sdl2",
  "simple_logger",
 ]

@@ -8,6 +8,20 @@ use memflow::prelude::v1::*;
 pub mod window;
 use window::Window;
 
+fn find_marker(module_buf: &[u8]) -> Option<usize> {
+    use ::regex::bytes::*;
+
+    // 0D 0E 0A 0D 0B 0A 0B 0E
+    let re = Regex::new("(?-u)\\x0D\\x0E\\x0A\\x0D\\x0B\\x0A\\x0B\\x0E")
+        .expect("malformed marker signature");
+    let buf_offs = re
+        .find_iter(&module_buf[..])
+        .nth(1)? // TODO: fixme
+        .start();
+
+    Some(buf_offs as usize)
+}
+
 fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from(yaml).get_matches();
@@ -42,39 +56,48 @@ fn main() {
         .build()
         .expect("unable to instantiate connector / os");
 
+    // load process
+    let proc_name = matches.value_of("process").expect("no process specified");
+
     let mut process = os
-        .into_process_by_name("dxgi-capture.exe")
+        .into_process_by_name(&proc_name)
         .expect("unable to find dxgi-capture process");
     info!("found process: {:?}", process.info());
 
     let module_info = process
-        .module_by_name("dxgi-capture.exe")
+        .module_by_name(&proc_name)
         .expect("unable to find dxgi-capture module in process");
     info!("found module: {:?}", module_info);
 
-    let offset_resolution = 0x31100;
-    let offset_frame = 0x31118;
+    // read entire module for sigscanning
+    let module_buf = process
+        .virt_mem()
+        .virt_read_raw(module_info.base, module_info.size)
+        .data_part()
+        .expect("unable to read module");
 
-    let width: u64 = process
+    let marker_offs = find_marker(&module_buf).expect("unable to find marker in binary");
+    info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
+    let marker_addr = module_info.base + marker_offs;
+
+    let width: usize = process.virt_mem().virt_read(marker_addr + 0x8).unwrap();
+    let height: usize = process
         .virt_mem()
-        .virt_read(module_info.base + offset_resolution + 0x8)
+        .virt_read(marker_addr + 0x8 + 0x8)
         .unwrap();
-    let height: u64 = process
-        .virt_mem()
-        .virt_read(module_info.base + offset_resolution + 2 * 0x8)
-        .unwrap();
-    println!("detected resolution: {}x{}", width, height);
+    println!("found resolution: {}x{}", width, height);
 
     let frame_addr = process
         .virt_mem()
-        .virt_read_addr64(module_info.base + offset_frame)
+        .virt_read_addr64(marker_addr + 0x20)
         .unwrap();
-    println!("detected frame addr: {:x}", frame_addr);
+    println!("found frame_addr: {:x}", frame_addr);
 
+    // pre-allocate frame_buffer
     let mut frame_buffer = vec![0u8; (width * height * 4) as usize]; // BGRA8
 
     // create window
-    let mut wnd = Window::new();
+    let mut wnd = Window::new(matches.is_present("vsync"));
 
     let start = Instant::now();
     let mut frames = 0;
@@ -86,8 +109,17 @@ fn main() {
     );
     let texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
+    let mut previous_frame_count = 0;
     loop {
         let mut frame = wnd.frame();
+
+        loop {
+            let frame_count: u32 = process.virt_mem().virt_read(marker_addr + 0x18).unwrap();
+            if frame_count != previous_frame_count {
+                previous_frame_count = frame_count;
+                break;
+            }
+        }
 
         process
             .virt_mem()
@@ -126,7 +158,7 @@ fn main() {
         if (frames % 100) == 0 {
             let elapsed = start.elapsed().as_millis() as f64;
             if elapsed > 0.0 {
-                println!("{} fps", (f64::from(frames)) / elapsed * 1000.0);
+                info!("{} fps", (f64::from(frames)) / elapsed * 1000.0);
             }
         }
     }

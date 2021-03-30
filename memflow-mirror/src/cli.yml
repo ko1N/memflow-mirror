@@ -17,3 +17,13 @@ args:
     short: a
     long: args
     takes_value: true
+- process:
+    short: p
+    long: process
+    takes_value: true
+    default_value: mirror.exe
+    help: the capturing process name in the vm
+- vsync:
+    short: s
+    long: vsync
+    help: enables vsync

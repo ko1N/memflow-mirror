@@ -12,6 +12,7 @@ memflow = { git = "https://github.com/memflow/memflow", branch = "next" }
 clap = { version = "2.33.0", features = ["yaml"] }
 simple_logger = "1.0"
 log = "0.4.8"
+regex = "1" # TODO: replace with pattern-scanner lib
 
 # renderer
 sdl2 = { version = "0.34.0", features = ["bundled", "static-link"] }
