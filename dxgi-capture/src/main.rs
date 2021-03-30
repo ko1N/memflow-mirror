@@ -14,7 +14,6 @@ pub struct GlobalFrameBuffer {
     frame_buffer: Vec<BGRA8>,   // 0x20
 }
 
-// TODO: marker
 static mut GLOBAL_FRAME_BUFFER: Option<GlobalFrameBuffer> = None;
 
 fn main() {
@@ -74,7 +73,5 @@ fn main() {
                 println!("{} fps", (f64::from(frame_counter)) / elapsed * 1000.0);
             }
         }
-
-        //std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
