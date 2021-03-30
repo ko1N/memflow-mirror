@@ -6,9 +6,16 @@ use winapi::um::libloaderapi::GetModuleHandleA;
 mod dxgi;
 use dxgi::{DXGIManager, BGRA8};
 
+#[repr(C)]
+pub struct GlobalFrameBuffer {
+    _marker: [u8; 8], // 0x0
+    resolution: (usize, usize), // 0x8
+    frame_counter: u32, // 0x18
+    frame_buffer: Vec<BGRA8>, // 0x20
+}
+
 // TODO: marker
-static mut RESOLUTION: Option<(usize, usize)> = None;
-static mut CURRENT_FRAME: Option<Vec<BGRA8>> = None;
+static mut GLOBAL_FRAME_BUFFER: Option<GlobalFrameBuffer> = None;
 
 fn main() {
     let module_base = unsafe { GetModuleHandleA(std::ptr::null_mut()) } as u64;
@@ -17,51 +24,52 @@ fn main() {
     // offsets
     {
         unsafe {
-            let resolution_ref = &RESOLUTION;
-            let resolution_addr = resolution_ref as *const _ as *const c_void as u64;
-            println!("resolution offset: 0x{:x}", resolution_addr - module_base);
-        }
-        unsafe {
-            let frame_ref = &CURRENT_FRAME;
-            let frame_addr = frame_ref as *const _ as *const c_void as u64;
-            println!("frame offset: 0x{:x}", frame_addr - module_base);
+            let marker_ref = &GLOBAL_FRAME_BUFFER;
+            let marker_addr = marker_ref as *const _ as *const c_void as u64;
+            println!("marker offset: 0x{:x}", marker_addr - module_base);
         }
     }
 
-    let mut dxgi = DXGIManager::new(10).expect("unable to create dxgi manager");
+    let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
     let geometry = dxgi.geometry();
     println!("geometry: {:?}", geometry);
     unsafe {
-        RESOLUTION = Some(geometry);
-        CURRENT_FRAME = Some(vec![
-            BGRA8 {
-                b: 0,
-                g: 0,
-                r: 0,
-                a: 0
-            };
-            geometry.0 * geometry.1
-        ]);
+        GLOBAL_FRAME_BUFFER = Some(GlobalFrameBuffer {
+            _marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+            resolution: geometry,
+            frame_counter: 0,
+            frame_buffer: vec![
+                BGRA8 {
+                    b: 0,
+                    g: 0,
+                    r: 0,
+                    a: 0
+                };
+                geometry.0 * geometry.1
+            ],
+        })
     }
 
     let start = Instant::now();
-    let mut frames = 0;
+    let mut frame_counter = 0u32;
     loop {
         if let Ok(frame) = dxgi.capture_frame() {
             // frame captured, put into global buffer
             unsafe {
-                if let Some(current_frame) = &mut CURRENT_FRAME {
-                    current_frame.copy_from_slice(frame.0.as_slice());
+                if let Some(global_frame) = &mut GLOBAL_FRAME_BUFFER {
+                    global_frame.frame_buffer.copy_from_slice(frame.0.as_slice());
+                    global_frame.resolution = frame.1;
+                    global_frame.frame_counter = frame_counter;
                 }
             }
 
-            frames += 1;
+            frame_counter += 1;
         }
 
-        if (frames % 1000) == 0 {
+        if (frame_counter % 1000) == 0 {
             let elapsed = start.elapsed().as_millis() as f64;
             if elapsed > 0.0 {
-                println!("{} fps", (f64::from(frames)) / elapsed * 1000.0);
+                println!("{} fps", (f64::from(frame_counter)) / elapsed * 1000.0);
             }
         }
 
