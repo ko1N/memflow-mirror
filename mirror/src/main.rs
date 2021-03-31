@@ -8,7 +8,7 @@ use memflow::prelude::v1::*;
 pub mod window;
 use window::Window;
 
-pub use mirror_dto::GlobalBuffer;
+use mirror_dto::GlobalBufferRaw;
 
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
@@ -82,51 +82,91 @@ fn main() {
     info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
     let marker_addr = module_info.base + marker_offs;
 
-    let width: usize = process.virt_mem().virt_read(marker_addr + 0x8).unwrap();
-    let height: usize = process
+    let mut global_buffer: GlobalBufferRaw = process
         .virt_mem()
-        .virt_read(marker_addr + 0x8 + 0x8)
-        .unwrap();
-    println!("found resolution: {}x{}", width, height);
-
-    let frame_addr = process
-        .virt_mem()
-        .virt_read_addr64(marker_addr + 0x20)
-        .unwrap();
-    println!("found frame_addr: {:x}", frame_addr);
+        .virt_read(marker_addr)
+        .expect("unable to read global buffer");
+    println!(
+        "found resolution: {}x{}",
+        global_buffer.width, global_buffer.height
+    );
+    println!("found frame_buffer addr: {:x}", global_buffer.frame_buffer);
 
     // pre-allocate frame_buffer
-    let mut frame_buffer = vec![0u8; (width * height * 4) as usize]; // BGRA8
+    let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
 
     // create window
     let mut wnd = Window::new(matches.is_present("vsync"));
 
-    let start = Instant::now();
-    let mut frames = 0;
-
     // create texture
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(
         &frame_buffer[..],
-        (width as u32, height as u32),
+        (global_buffer.width as u32, global_buffer.height as u32),
     );
     let texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
-    let mut previous_frame_count = 0;
+    // TODO: create cursor texture?
+
+    let start = Instant::now();
+    let mut frames = 0;
+    let mut previous_frame_counter = 0;
     loop {
         let mut frame = wnd.frame();
 
         loop {
-            let frame_count: u32 = process.virt_mem().virt_read(marker_addr + 0x18).unwrap();
-            if frame_count != previous_frame_count {
-                previous_frame_count = frame_count;
+            process
+                .virt_mem()
+                .virt_read_into(marker_addr, &mut global_buffer)
+                .unwrap();
+            if global_buffer.frame_counter != previous_frame_counter {
+                previous_frame_counter = global_buffer.frame_counter;
                 break;
             }
         }
 
+        // update frame_buffer
         process
             .virt_mem()
-            .virt_read_into(frame_addr, &mut frame_buffer[..])
+            .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
             .unwrap();
+
+        // TODO: handle resolution change
+        let new_image = glium::texture::RawImage2d::from_raw_rgba(
+            frame_buffer.clone(),
+            (global_buffer.width as u32, global_buffer.height as u32),
+        );
+        texture.write(
+            glium::Rect {
+                left: 0,
+                bottom: 0,
+                width: global_buffer.width as u32,
+                height: global_buffer.height as u32,
+            },
+            new_image,
+        );
+        frame.draw_texture(-1.0, -1.0, 2.0, 2.0, &texture);
+
+        println!(
+            "{} ; {} ; {}x{}",
+            global_buffer.cursor.is_visible,
+            global_buffer.cursor.cursor_id,
+            global_buffer.cursor.x,
+            global_buffer.cursor.y
+        );
+
+        let cursor_scale = (
+            2.0 / global_buffer.width as f32,
+            2.0 / global_buffer.height as f32,
+        );
+        frame.draw_texture(
+            -1.0 + cursor_scale.0 * global_buffer.cursor.x as f32,
+            -1.0 + cursor_scale.1 * global_buffer.cursor.y as f32,
+            cursor_scale.0 * 16.0,
+            cursor_scale.1 * 16.0,
+            &texture,
+        );
+
+        frame.draw_texture(0.5, -1.0, 0.2, 0.2, &texture);
 
         /*
         frame.draw_text(
@@ -136,21 +176,6 @@ fn main() {
             [1.0; 4],
         );
         */
-
-        let new_image = glium::texture::RawImage2d::from_raw_rgba(
-            frame_buffer.clone(),
-            (width as u32, height as u32),
-        );
-        texture.write(
-            glium::Rect {
-                left: 0,
-                bottom: 0,
-                width: width as u32,
-                height: height as u32,
-            },
-            new_image,
-        );
-        frame.draw_texture(&texture);
 
         if !frame.end() {
             break;

@@ -51,7 +51,7 @@ impl Window {
         let sdl = sdl2::init().unwrap();
         let video_subsystem = sdl.video().unwrap();
         let display = video_subsystem
-            .window("memflow-mirror", 1920, 1080)
+            .window("mirror", 1920, 1080)
             .resizable()
             .build_glium()
             .unwrap();
@@ -76,8 +76,8 @@ impl Window {
         // TODO: find proper paths
         let program = load_shader_program(
             &display,
-            "memflow-mirror/src/resources/vertex.glsl",
-            "memflow-mirror/src/resources/fragment.glsl",
+            "mirror/src/resources/vertex.glsl",
+            "mirror/src/resources/fragment.glsl",
         )
         .unwrap();
 
@@ -85,7 +85,7 @@ impl Window {
         let (resources_update_tx, resources_update_rx) = channel();
         let mut watcher = watcher(resources_update_tx, Duration::from_millis(500)).unwrap();
         watcher
-            .watch("memflow-mirror/src/resources", RecursiveMode::NonRecursive)
+            .watch("mirror/src/resources", RecursiveMode::NonRecursive)
             .unwrap();
 
         Self {
@@ -108,8 +108,8 @@ impl Window {
             if file.extension().is_some() && file.extension().unwrap() == "glsl" {
                 match load_shader_program(
                     &self.display,
-                    "memflow-mirror/src/resources/vertex.glsl",
-                    "memflow-mirror/src/resources/fragment.glsl",
+                    "mirror/src/resources/vertex.glsl",
+                    "mirror/src/resources/fragment.glsl",
                 ) {
                     Ok(program) => {
                         info!("shader reload successful");
@@ -175,7 +175,7 @@ impl<'a> WindowFrame<'a> {
         .unwrap();
     }
 
-    pub fn draw_texture(&mut self, texture: &SrgbTexture2d) {
+    pub fn draw_texture(&mut self, x: f32, y: f32, w: f32, h: f32, texture: &SrgbTexture2d) {
         #[derive(Copy, Clone)]
         struct Vertex {
             position: [f32; 2],
@@ -184,19 +184,19 @@ impl<'a> WindowFrame<'a> {
         implement_vertex!(Vertex, position, tex_coords);
 
         let vertex1 = Vertex {
-            position: [-1.0, 1.0],
+            position: [x, 1.0 - (y + h)],
             tex_coords: [0.0, 0.0],
         };
         let vertex2 = Vertex {
-            position: [1.0, 1.0],
+            position: [x + w, 1.0 - (y + h)],
             tex_coords: [1.0, 0.0],
         };
         let vertex3 = Vertex {
-            position: [1.0, -1.0],
+            position: [x + w, 1.0 - y],
             tex_coords: [1.0, 1.0],
         };
         let vertex4 = Vertex {
-            position: [-1.0, -1.0],
+            position: [x, 1.0 - y],
             tex_coords: [0.0, 1.0],
         };
         let shape = vec![vertex1, vertex2, vertex3, vertex4];

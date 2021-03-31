@@ -7,6 +7,6 @@ uniform sampler2D tex;
 
 void main() {
     // map dxgi bgra to rgba
-    //color.zyxw = texture(tex, v_tex_coords);
-    color = texture(tex, v_tex_coords);
+    color.zyxw = texture(tex, v_tex_coords);
+    //color = texture(tex, v_tex_coords);
 }
