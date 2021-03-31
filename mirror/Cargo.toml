@@ -21,3 +21,4 @@ glium = "0.26"
 glium_text_rusttype = "0.3.3"
 cgmath = "0.17" # TODO: replace?
 notify = "4.0"
+image = "0.23"

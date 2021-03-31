@@ -175,7 +175,15 @@ impl<'a> WindowFrame<'a> {
         .unwrap();
     }
 
-    pub fn draw_texture(&mut self, x: f32, y: f32, w: f32, h: f32, texture: &SrgbTexture2d) {
+    pub fn draw_texture(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        texture: &SrgbTexture2d,
+        alpha: bool,
+    ) {
         #[derive(Copy, Clone)]
         struct Vertex {
             position: [f32; 2],
@@ -184,20 +192,20 @@ impl<'a> WindowFrame<'a> {
         implement_vertex!(Vertex, position, tex_coords);
 
         let vertex1 = Vertex {
-            position: [x, 1.0 - (y + h)],
-            tex_coords: [0.0, 0.0],
+            position: [x, y + h],
+            tex_coords: [0.0, 1.0],
         };
         let vertex2 = Vertex {
-            position: [x + w, 1.0 - (y + h)],
-            tex_coords: [1.0, 0.0],
-        };
-        let vertex3 = Vertex {
-            position: [x + w, 1.0 - y],
+            position: [x + w, y + h],
             tex_coords: [1.0, 1.0],
         };
+        let vertex3 = Vertex {
+            position: [x + w, y],
+            tex_coords: [1.0, 0.0],
+        };
         let vertex4 = Vertex {
-            position: [x, 1.0 - y],
-            tex_coords: [0.0, 1.0],
+            position: [x, y],
+            tex_coords: [0.0, 0.0],
         };
         let shape = vec![vertex1, vertex2, vertex3, vertex4];
 
@@ -214,13 +222,22 @@ impl<'a> WindowFrame<'a> {
         )
         .unwrap();
 
+        let params = if alpha {
+            glium::DrawParameters {
+                blend: glium::draw_parameters::Blend::alpha_blending(),
+                ..Default::default()
+            }
+        } else {
+            Default::default()
+        };
+
         self.frame
             .draw(
                 &vertex_buffer,
                 &indices,
                 &self.window.program,
                 &uniforms,
-                &Default::default(),
+                &params,
             )
             .unwrap();
     }

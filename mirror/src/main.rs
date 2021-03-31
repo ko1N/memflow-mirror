@@ -1,6 +1,8 @@
+use std::io::Cursor;
 use std::time::Instant;
 
 use clap::{load_yaml, App};
+use image;
 use log::{info, Level};
 
 use memflow::prelude::v1::*;
@@ -98,14 +100,26 @@ fn main() {
     // create window
     let mut wnd = Window::new(matches.is_present("vsync"));
 
-    // create texture
+    // create frame texture
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(
         &frame_buffer[..],
         (global_buffer.width as u32, global_buffer.height as u32),
     );
     let texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
-    // TODO: create cursor texture?
+    // create cursor texture
+    let cursor_image_png = image::load(
+        Cursor::new(&include_bytes!("resources/cursor.png")[..]),
+        image::ImageFormat::Png,
+    )
+    .expect("unable to load cursor image")
+    .to_rgba8();
+    let cursor_dimensions = cursor_image_png.dimensions();
+    let cursor_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+        &cursor_image_png.into_raw(),
+        cursor_dimensions,
+    );
+    let cursor_texture = glium::texture::SrgbTexture2d::new(&wnd.display, cursor_image).unwrap();
 
     let start = Instant::now();
     let mut frames = 0;
@@ -144,29 +158,27 @@ fn main() {
             },
             new_image,
         );
-        frame.draw_texture(-1.0, -1.0, 2.0, 2.0, &texture);
+        frame.draw_texture(-1.0, 1.0, 2.0, -2.0, &texture, false);
 
-        println!(
-            "{} ; {} ; {}x{}",
-            global_buffer.cursor.is_visible,
-            global_buffer.cursor.cursor_id,
-            global_buffer.cursor.x,
-            global_buffer.cursor.y
-        );
-
-        let cursor_scale = (
-            2.0 / global_buffer.width as f32,
-            2.0 / global_buffer.height as f32,
-        );
-        frame.draw_texture(
-            -1.0 + cursor_scale.0 * global_buffer.cursor.x as f32,
-            -1.0 + cursor_scale.1 * global_buffer.cursor.y as f32,
-            cursor_scale.0 * 16.0,
-            cursor_scale.1 * 16.0,
-            &texture,
-        );
-
-        frame.draw_texture(0.5, -1.0, 0.2, 0.2, &texture);
+        // draw cursor
+        if global_buffer.cursor.is_visible != 0 {
+            let scale = (
+                2.0 / global_buffer.width as f32,
+                2.0 / global_buffer.height as f32,
+            );
+            let dimensions = (
+                scale.0 * cursor_dimensions.0 as f32,
+                scale.1 * cursor_dimensions.1 as f32,
+            );
+            frame.draw_texture(
+                -1.0 + scale.0 * global_buffer.cursor.x as f32,
+                1.0 - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
+                dimensions.0,
+                dimensions.1,
+                &cursor_texture,
+                true,
+            );
+        }
 
         /*
         frame.draw_text(

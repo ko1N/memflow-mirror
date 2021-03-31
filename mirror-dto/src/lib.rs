@@ -7,7 +7,7 @@ pub struct GlobalBuffer {
     pub height: usize,         // 0x10
     pub frame_counter: u32,    // 0x18
     pub frame_buffer: Vec<u8>, // 0x20
-    pub cursor: Cursor,        // 0x28
+    pub cursor: Cursor,        // 0x38
 }
 
 #[repr(C)]
@@ -17,7 +17,8 @@ pub struct GlobalBufferRaw {
     pub height: usize,      // 0x10
     pub frame_counter: u32, // 0x18
     pub frame_buffer: u64,  // 0x20
-    pub cursor: Cursor,     // 0x28
+    pad0: [u8; 0x10],
+    pub cursor: Cursor, // 0x38
 }
 unsafe impl Pod for GlobalBufferRaw {}
 
