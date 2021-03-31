@@ -7,7 +7,10 @@ use std::time::Duration;
 
 use log::{info, warn};
 
-use glium::{backend::Facade, implement_vertex, texture::SrgbTexture2d, uniform, Surface};
+use glium::{
+    backend::Facade, implement_vertex, texture::SrgbTexture2d, uniform,
+    uniforms::MagnifySamplerFilter, Surface,
+};
 use glium_text_rusttype as glium_text;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use sdl2::{self, video::SwapInterval};
@@ -210,7 +213,7 @@ impl<'a> WindowFrame<'a> {
         let shape = vec![vertex1, vertex2, vertex3, vertex4];
 
         let uniforms = uniform! {
-            tex: texture,
+            tex: texture.sampled().magnify_filter(MagnifySamplerFilter::Nearest),
         };
 
         let vertex_buffer = glium::VertexBuffer::new(&self.window.display, &shape).unwrap();

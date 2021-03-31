@@ -4,8 +4,7 @@ use std::time::Instant;
 
 use winapi::um::libloaderapi::GetModuleHandleA;
 
-mod dxgi;
-use dxgi::DXGIManager;
+use dxgcap::DXGIManager;
 
 mod cursor;
 

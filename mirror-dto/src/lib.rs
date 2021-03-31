@@ -1,4 +1,4 @@
-use memflow::prelude::v1::{Pod, Pointer64};
+use memflow::prelude::v1::{Pod};
 
 #[repr(C)]
 pub struct GlobalBuffer {

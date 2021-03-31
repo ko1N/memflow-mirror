@@ -125,8 +125,6 @@ fn main() {
     let mut frames = 0;
     let mut previous_frame_counter = 0;
     loop {
-        let mut frame = wnd.frame();
-
         loop {
             process
                 .virt_mem()
@@ -158,6 +156,10 @@ fn main() {
             },
             new_image,
         );
+
+        let mut frame = wnd.frame();
+
+        // draw texture
         frame.draw_texture(-1.0, 1.0, 2.0, -2.0, &texture, false);
 
         // draw cursor
