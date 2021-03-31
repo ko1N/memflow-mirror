@@ -8,15 +8,6 @@ use dxgi::{DXGIManager, BGRA8};
 
 mod cursor;
 
-#[repr(C)]
-pub struct GlobalFrameBuffer {
-    _marker: [u8; 8],           // 0x0
-    resolution: (usize, usize), // 0x8
-    frame_counter: u32,         // 0x18
-    frame_buffer: Vec<BGRA8>,   // 0x20
-    cursor: cursor::Cursor,     // 0x28
-}
-
 static mut GLOBAL_FRAME_BUFFER: Option<GlobalFrameBuffer> = None;
 
 fn main() {

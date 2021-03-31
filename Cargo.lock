@@ -476,14 +476,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
-name = "dxgi-capture"
-version = "0.1.0"
-dependencies = [
- "winapi 0.3.9",
- "wio",
-]
-
-[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -938,22 +930,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memflow-mirror"
-version = "0.1.0"
-dependencies = [
- "cgmath",
- "clap",
- "glium",
- "glium_text_rusttype",
- "log",
- "memflow",
- "notify",
- "regex",
- "sdl2",
- "simple_logger",
-]
-
-[[package]]
 name = "memmap"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1023,6 +999,36 @@ dependencies = [
  "net2",
  "winapi 0.2.8",
  "ws2_32-sys",
+]
+
+[[package]]
+name = "mirror"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "clap",
+ "glium",
+ "glium_text_rusttype",
+ "log",
+ "memflow",
+ "mirror_dto",
+ "notify",
+ "regex",
+ "sdl2",
+ "simple_logger",
+]
+
+[[package]]
+name = "mirror_dto"
+version = "0.1.0"
+
+[[package]]
+name = "mirror_guest"
+version = "0.1.0"
+dependencies = [
+ "mirror_dto",
+ "winapi 0.3.9",
+ "wio",
 ]
 
 [[package]]

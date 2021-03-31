@@ -8,6 +8,8 @@ use memflow::prelude::v1::*;
 pub mod window;
 use window::Window;
 
+pub use mirror_dto::GlobalBuffer;
+
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
 
