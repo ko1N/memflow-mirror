@@ -4,6 +4,8 @@ use std::ptr;
 use winapi::shared::windef::POINT;
 use winapi::um::winuser::{GetCursorInfo, CURSORINFO, CURSOR_SHOWING};
 
+use mirror_dto::Cursor;
+
 pub fn get_state() -> Result<Cursor, &'static str> {
     let mut ci = CURSORINFO {
         cbSize: size_of::<CURSORINFO>() as u32,
