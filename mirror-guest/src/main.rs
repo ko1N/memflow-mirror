@@ -47,7 +47,8 @@ fn main() {
                             frame.0.as_ptr() as *const u8,
                             frame.0.len() * 4,
                         ));
-                    global_buffer.resolution = frame.1;
+                    global_buffer.width = frame.1 .0;
+                    global_buffer.height = frame.1 .1;
                     global_buffer.frame_counter = frame_counter;
                 }
             }

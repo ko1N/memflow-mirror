@@ -1021,6 +1021,9 @@ dependencies = [
 [[package]]
 name = "mirror_dto"
 version = "0.1.0"
+dependencies = [
+ "memflow",
+]
 
 [[package]]
 name = "mirror_guest"

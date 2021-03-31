@@ -16,7 +16,7 @@ pub fn get_state() -> Result<Cursor, &'static str> {
     let result = unsafe { GetCursorInfo(&mut ci) };
     if result != 0 {
         Ok(Cursor {
-            is_visible: ci.flags == CURSOR_SHOWING,
+            is_visible: if ci.flags == CURSOR_SHOWING { 1 } else { 0 },
             cursor_id: ci.hCursor as u32,
             x: ci.ptScreenPos.x,
             y: ci.ptScreenPos.y,
