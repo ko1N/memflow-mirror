@@ -40,7 +40,8 @@ fn main() {
             unsafe {
                 if let Some(global_buffer) = &GLOBAL_BUFFER {
                     //println!("waiting: read_counter={} counter={}", global_buffer.frame_read_counter, global_buffer.frame_counter);
-                    let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
+                    let frame_read_counter =
+                        std::ptr::read_volatile(&global_buffer.frame_read_counter);
                     if frame_read_counter == global_buffer.frame_counter {
                         break;
                     }
