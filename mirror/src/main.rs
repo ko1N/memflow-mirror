@@ -125,9 +125,10 @@ fn main() {
     let mut frames = 0;
     let mut previous_frame_counter = 0;
     loop {
+        let virt_mem = process.virt_mem();
+
         loop {
-            process
-                .virt_mem()
+            virt_mem
                 .virt_read_into(marker_addr, &mut global_buffer)
                 .unwrap();
             if global_buffer.frame_counter != previous_frame_counter {
@@ -137,10 +138,11 @@ fn main() {
         }
 
         // update frame_buffer
-        process
-            .virt_mem()
+        virt_mem
             .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
             .unwrap();
+        global_buffer.frame_read_counter = global_buffer.frame_counter;
+        virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
 
         // TODO: handle resolution change
         let new_image = glium::texture::RawImage2d::from_raw_rgba(
