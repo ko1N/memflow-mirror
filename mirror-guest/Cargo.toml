@@ -1,10 +1,10 @@
 [package]
-name = "mirror_guest"
+name = "mirror-guest"
 version = "0.1.0"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-mirror_dto = { path = "../mirror-dto" }
+mirror-dto = { path = "../mirror-dto" }
 winapi = { version = "0.3.8", features = ["winuser", "libloaderapi"] }
 dxgcap = "0.2"

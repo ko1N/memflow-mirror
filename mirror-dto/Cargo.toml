@@ -1,5 +1,5 @@
 [package]
-name = "mirror_dto"
+name = "mirror-dto"
 version = "0.1.0"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"

@@ -8,12 +8,14 @@ edition = "2018"
 clap = { version = "2.33.0", features = ["yaml"] }
 
 [dependencies]
-memflow = { git = "https://github.com/memflow/memflow", branch = "next" }
+memflow = { git = "https://github.com/memflow/memflow", branch = "next", features = ["plugins"] }
+memflow-win32 = { git = "https://github.com/memflow/memflow", branch = "next", optional = true }
+memflow-qemu-procfs = { git = "https://github.com/memflow/memflow-qemu-procfs", branch = "next", optional = true }
+mirror-dto = { path = "../mirror-dto" }
 clap = { version = "2.33.0", features = ["yaml"] }
 simple_logger = "1.0"
 log = "0.4.8"
 regex = "1" # TODO: replace with pattern-scanner lib
-mirror_dto = { path = "../mirror-dto" }
 
 # renderer
 sdl2 = { version = "0.34.0", features = ["bundled", "static-link"] }
@@ -22,3 +24,7 @@ glium_text_rusttype = "0.3.3"
 cgmath = "0.17" # TODO: replace?
 notify = "4.0"
 image = "0.23"
+
+[features]
+default = []
+memflow-static = ["memflow-win32", "memflow-qemu-procfs"]

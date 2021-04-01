@@ -51,14 +51,30 @@ fn main() {
         .expect("unable to parse connector arguments");
 
     // build connector + os
-    let inventory = Inventory::scan();
-    let os = inventory
-        .builder()
-        .connector(conn_name)
-        .args(conn_args)
-        .os("win32")
-        .build()
-        .expect("unable to instantiate connector / os");
+    #[cfg(feature = "memflow-static")]
+    let os = {
+        // load connector/os statically
+        let connector = memflow_qemu_procfs::create_connector(&connector_args, Level::Debug)
+            .expect("unable to create qemu_procfs connector");
+
+        memflow_win32::Win32Kernel::builder(connector)
+            .build_default_caches()
+            .build()
+            .expect("unable to create win32 instance with qemu_procfs connector")
+    };
+
+    #[cfg(not(feature = "memflow-static"))]
+    let os = {
+        // load connector/os via inventory
+        let inventory = Inventory::scan();
+        inventory
+            .builder()
+            .connector(conn_name)
+            .args(conn_args)
+            .os("win32")
+            .build()
+            .expect("unable to instantiate connector / os")
+    };
 
     // load process
     let proc_name = matches.value_of("process").expect("no process specified");
@@ -152,6 +168,7 @@ fn main() {
             // update frame_buffer
             virt_mem
                 .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
+                .data_part()
                 .unwrap();
             global_buffer.frame_read_counter = global_buffer.frame_counter;
             virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
@@ -209,13 +226,13 @@ fn main() {
                 &format!("fps: {:.0}", (f64::from(frames)) / elapsed * 1000.0),
                 [25.0, 35.0],
                 [0.025, 0.025],
-                [1.0; 4],
+                [0.0, 1.0, 1.0, 1.0],
             );
             frame.draw_text(
                 &format!("ups: {:.0}", (f64::from(updates)) / elapsed * 1000.0),
                 [25.0, 55.0],
                 [0.025, 0.025],
-                [1.0; 4],
+                [0.0, 1.0, 1.0, 1.0],
             );
 
             // reset counters
