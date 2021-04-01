@@ -105,7 +105,7 @@ fn main() {
         &frame_buffer[..],
         (global_buffer.width as u32, global_buffer.height as u32),
     );
-    let texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
+    let mut texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
     // create cursor texture
     let cursor_image_png = image::load(
@@ -144,20 +144,26 @@ fn main() {
         global_buffer.frame_read_counter = global_buffer.frame_counter;
         virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
 
-        // TODO: handle resolution change
+        // update image
         let new_image = glium::texture::RawImage2d::from_raw_rgba(
             frame_buffer.clone(),
             (global_buffer.width as u32, global_buffer.height as u32),
         );
-        texture.write(
-            glium::Rect {
-                left: 0,
-                bottom: 0,
-                width: global_buffer.width as u32,
-                height: global_buffer.height as u32,
-            },
-            new_image,
-        );
+        if texture.width() != global_buffer.width as u32 || texture.height() != global_buffer.height as u32 {
+            // recreate texture
+            texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+        } else {
+            // update texture
+            texture.write(
+                glium::Rect {
+                    left: 0,
+                    bottom: 0,
+                    width: global_buffer.width as u32,
+                    height: global_buffer.height as u32,
+                },
+                new_image,
+            );
+        }
 
         let mut frame = wnd.frame();
 
