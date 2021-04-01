@@ -39,3 +39,8 @@ This will statically link memflow-win32 as well as memflow-qemu-procfs into the 
 ```bash
 RUST_SETPTRACE=1 cargo run --release --bin mirror --all-features -- -vvv --connector qemu_procfs --process mirror_guest.exe
 ```
+
+## Demo
+
+[![mirror demo](http://img.youtube.com/vi/H-1wxAeocGA/0.jpg)](http://www.youtube.com/watch?v=H-1wxAeocGA "mirror demo")
+
