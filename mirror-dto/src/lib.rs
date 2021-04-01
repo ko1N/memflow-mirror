@@ -1,4 +1,4 @@
-use memflow::prelude::v1::{Pod};
+use memflow::prelude::v1::Pod;
 
 #[repr(C)]
 pub struct GlobalBuffer {
@@ -6,8 +6,9 @@ pub struct GlobalBuffer {
     pub width: usize,          // 0x8
     pub height: usize,         // 0x10
     pub frame_counter: u32,    // 0x18
-    pub frame_buffer: Vec<u8>, // 0x20
-    pub cursor: Cursor,        // 0x38
+    pub sync_flag: i32,        // 0x20
+    pub frame_buffer: Vec<u8>, // 0x28
+    pub cursor: Cursor,        //
 }
 
 #[repr(C)]
@@ -16,9 +17,10 @@ pub struct GlobalBufferRaw {
     pub width: usize,       // 0x8
     pub height: usize,      // 0x10
     pub frame_counter: u32, // 0x18
-    pub frame_buffer: u64,  // 0x20
+    pub sync_flag: i32,     // 0x20
+    pub frame_buffer: u64,  // 0x28
     pad0: [u8; 0x10],
-    pub cursor: Cursor, // 0x38
+    pub cursor: Cursor, //
 }
 unsafe impl Pod for GlobalBufferRaw {}
 
@@ -29,6 +31,7 @@ impl GlobalBuffer {
             width: resolution.0,
             height: resolution.1,
             frame_counter: 0,
+            sync_flag: 0,
             frame_buffer: vec![0u8; resolution.0 * resolution.1 * 4],
             cursor: Cursor::default(),
         }
