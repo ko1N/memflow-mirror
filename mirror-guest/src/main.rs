@@ -35,8 +35,30 @@ fn main() {
     let start = Instant::now();
     let mut frame_counter = 0u32;
     loop {
+        // wait for frame to be read
+        loop {
+            unsafe {
+                if let Some(global_buffer) = &GLOBAL_BUFFER {
+                    //println!("waiting: read_counter={} counter={}", global_buffer.frame_read_counter, global_buffer.frame_counter);
+                    let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
+                    if frame_read_counter == global_buffer.frame_counter {
+                        break;
+                    }
+                }
+            }
+        }
+
         // generate frame
         if let Ok(frame) = dxgi.capture_frame() {
+            // update cursor
+            if let Ok(cursor) = cursor::get_state() {
+                unsafe {
+                    if let Some(global_frame) = &mut GLOBAL_BUFFER {
+                        global_frame.cursor = cursor;
+                    }
+                }
+            }
+
             // frame captured, put into global buffer
             unsafe {
                 if let Some(global_buffer) = &mut GLOBAL_BUFFER {
@@ -58,15 +80,6 @@ fn main() {
                 let elapsed = start.elapsed().as_millis() as f64;
                 if elapsed > 0.0 {
                     println!("{} fps", (f64::from(frame_counter)) / elapsed * 1000.0);
-                }
-            }
-        }
-
-        // update cursor
-        if let Ok(cursor) = cursor::get_state() {
-            unsafe {
-                if let Some(global_frame) = &mut GLOBAL_BUFFER {
-                    global_frame.cursor = cursor;
                 }
             }
         }
