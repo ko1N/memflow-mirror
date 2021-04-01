@@ -54,13 +54,13 @@ fn main() {
     #[cfg(feature = "memflow-static")]
     let os = {
         // load connector/os statically
-        let connector = memflow_qemu_procfs::create_connector(&connector_args, Level::Debug)
+        let connector = memflow_qemu_procfs::create_connector(&conn_args, level)
             .expect("unable to create qemu_procfs connector");
 
-        memflow_win32::Win32Kernel::builder(connector)
+        memflow_win32::prelude::Win32Kernel::builder(connector)
             .build_default_caches()
             .build()
-            .expect("unable to create win32 instance with qemu_procfs connector")
+            .expect("unable to instantiate win32 instance with qemu_procfs connector")
     };
 
     #[cfg(not(feature = "memflow-static"))]
