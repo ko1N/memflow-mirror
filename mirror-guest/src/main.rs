@@ -38,8 +38,7 @@ fn main() {
         // check if the frame has been read and we need to generate a new one
         let update_frame = unsafe {
             if let Some(global_buffer) = &GLOBAL_BUFFER {
-                let frame_read_counter =
-                    std::ptr::read_volatile(&global_buffer.frame_read_counter);
+                let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
                 frame_read_counter == global_buffer.frame_counter
             } else {
                 false

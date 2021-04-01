@@ -121,62 +121,61 @@ fn main() {
     );
     let cursor_texture = glium::texture::SrgbTexture2d::new(&wnd.display, cursor_image).unwrap();
 
-    let start = Instant::now();
+    let mut start = Instant::now();
     let mut frames = 0;
+    let mut updates = 0;
     let mut previous_frame_counter = 0;
     loop {
         let virt_mem = process.virt_mem();
 
-        loop {
-            virt_mem
-                .virt_read_into(marker_addr, &mut global_buffer)
-                .unwrap();
-            if global_buffer.frame_counter != previous_frame_counter {
-                previous_frame_counter = global_buffer.frame_counter;
-                break;
+        // check if a frame buffer is necessary
+        virt_mem
+            .virt_read_into(marker_addr, &mut global_buffer)
+            .unwrap();
+        if global_buffer.frame_counter != previous_frame_counter {
+            // check if resolution has been changed
+            if texture.width() != global_buffer.width as u32
+                || texture.height() != global_buffer.height as u32
+            {
+                println!(
+                    "changing resolution: to {}x{}",
+                    global_buffer.width, global_buffer.height
+                );
+                frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
+                let new_image = glium::texture::RawImage2d::from_raw_rgba(
+                    frame_buffer.clone(),
+                    (global_buffer.width as u32, global_buffer.height as u32),
+                );
+                texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
             }
-        }
 
-        // check if resolution has been changed
-        if texture.width() != global_buffer.width as u32
-            || texture.height() != global_buffer.height as u32
-        {
-            println!(
-                "changing resolution: to {}x{}",
-                global_buffer.width, global_buffer.height
-            );
-            frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
+            // update frame_buffer
+            virt_mem
+                .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
+                .unwrap();
+            global_buffer.frame_read_counter = global_buffer.frame_counter;
+            virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
+
+            // update image
             let new_image = glium::texture::RawImage2d::from_raw_rgba(
                 frame_buffer.clone(),
                 (global_buffer.width as u32, global_buffer.height as u32),
             );
-            texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+
+            // update texture
+            texture.write(
+                glium::Rect {
+                    left: 0,
+                    bottom: 0,
+                    width: global_buffer.width as u32,
+                    height: global_buffer.height as u32,
+                },
+                new_image,
+            );
+
+            updates += 1;
+            previous_frame_counter = global_buffer.frame_counter;
         }
-
-        // update frame_buffer
-        virt_mem
-            .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
-            .data_part()
-            .unwrap();
-        global_buffer.frame_read_counter = global_buffer.frame_counter;
-        virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
-
-        // update image
-        let new_image = glium::texture::RawImage2d::from_raw_rgba(
-            frame_buffer.clone(),
-            (global_buffer.width as u32, global_buffer.height as u32),
-        );
-
-        // update texture
-        texture.write(
-            glium::Rect {
-                left: 0,
-                bottom: 0,
-                width: global_buffer.width as u32,
-                height: global_buffer.height as u32,
-            },
-            new_image,
-        );
 
         let mut frame = wnd.frame();
 
@@ -203,25 +202,33 @@ fn main() {
             );
         }
 
-        /*
-        frame.draw_text(
-            &format!("fps: {:.0}", frame_counter.avg_frame_rate()),
-            [25.0, 35.0],
-            [0.025, 0.025],
-            [1.0; 4],
-        );
-        */
+        // fps and ups counter
+        {
+            let elapsed = start.elapsed().as_millis() as f64;
+            frame.draw_text(
+                &format!("fps: {:.0}", (f64::from(frames)) / elapsed * 1000.0),
+                [25.0, 35.0],
+                [0.025, 0.025],
+                [1.0; 4],
+            );
+            frame.draw_text(
+                &format!("ups: {:.0}", (f64::from(updates)) / elapsed * 1000.0),
+                [25.0, 55.0],
+                [0.025, 0.025],
+                [1.0; 4],
+            );
 
-        if !frame.end() {
-            break;
+            // reset counters
+            if elapsed >= 1000.0 {
+                start = Instant::now();
+                frames = 0;
+                updates = 0;
+            }
         }
 
         frames += 1;
-        if (frames % 100) == 0 {
-            let elapsed = start.elapsed().as_millis() as f64;
-            if elapsed > 0.0 {
-                info!("{} fps", (f64::from(frames)) / elapsed * 1000.0);
-            }
+        if !frame.end() {
+            break;
         }
     }
 }
