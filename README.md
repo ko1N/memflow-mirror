@@ -5,7 +5,7 @@ work in progress framebuffer mirror based on [memflow](https://github.com/memflo
 ## Installation
 Compile the guest-agent on Windows with:
 ```bash
-cargo build --release --bin mirror_guest --all-features
+cargo build --release --bin mirror-guest --all-features
 ```
 Then run the mirror_guest.exe from the target/release/ directory.
 
