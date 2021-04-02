@@ -32,7 +32,6 @@ fn main() {
         GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution));
     }
 
-    let start = Instant::now();
     let mut frame_counter = 0u32;
     loop {
         // check if the frame has been read and we need to generate a new one

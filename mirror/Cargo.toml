@@ -23,6 +23,7 @@ glium = "0.26"
 glium_text_rusttype = "0.3.3"
 cgmath = "0.17"
 image = "0.23"
+frame_counter = "0.1.2"
 notify = { version = "4.0", optional = true }
 
 [features]

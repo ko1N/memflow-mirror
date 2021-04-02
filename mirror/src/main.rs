@@ -1,7 +1,7 @@
 use std::io::Cursor;
-use std::time::Instant;
 
 use clap::{load_yaml, App};
+use frame_counter::FrameCounter;
 use image;
 use log::{info, Level};
 
@@ -137,11 +137,13 @@ fn main() {
     );
     let cursor_texture = glium::texture::SrgbTexture2d::new(&wnd.display, cursor_image).unwrap();
 
-    let mut start = Instant::now();
-    let mut frames = 0;
-    let mut updates = 0;
+    let mut frame_counter = FrameCounter::new(100f64);
+    let mut update_counter = FrameCounter::new(100f64);
+
     let mut previous_frame_counter = 0;
     loop {
+        frame_counter.tick();
+
         let virt_mem = process.virt_mem();
 
         // check if a frame buffer is necessary
@@ -149,6 +151,8 @@ fn main() {
             .virt_read_into(marker_addr, &mut global_buffer)
             .unwrap();
         if global_buffer.frame_counter != previous_frame_counter {
+            update_counter.tick();
+
             // check if resolution has been changed
             if texture.width() != global_buffer.width as u32
                 || texture.height() != global_buffer.height as u32
@@ -190,7 +194,6 @@ fn main() {
                 new_image,
             );
 
-            updates += 1;
             previous_frame_counter = global_buffer.frame_counter;
         }
 
@@ -221,29 +224,20 @@ fn main() {
 
         // fps and ups counter
         {
-            let elapsed = start.elapsed().as_millis() as f64;
             frame.draw_text(
-                &format!("fps: {:.0}", (f64::from(frames)) / elapsed * 1000.0),
+                &format!("fps: {:.0}", frame_counter.avg_frame_rate()),
                 [25.0, 35.0],
                 [0.025, 0.025],
                 [0.0, 1.0, 1.0, 1.0],
             );
             frame.draw_text(
-                &format!("ups: {:.0}", (f64::from(updates)) / elapsed * 1000.0),
+                &format!("ups: {:.0}", update_counter.avg_frame_rate()),
                 [25.0, 55.0],
                 [0.025, 0.025],
                 [0.0, 1.0, 1.0, 1.0],
             );
-
-            // reset counters
-            if elapsed >= 1000.0 {
-                start = Instant::now();
-                frames = 0;
-                updates = 0;
-            }
         }
 
-        frames += 1;
         if !frame.end() {
             break;
         }
