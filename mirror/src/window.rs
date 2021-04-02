@@ -12,8 +12,10 @@ use glium::{
     uniforms::MagnifySamplerFilter, Surface,
 };
 use glium_text_rusttype as glium_text;
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use sdl2::{self, video::SwapInterval};
+
+#[cfg(feature = "shader-reload")]
+use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 
 pub struct Window {
     pub display: glium_sdl2::SDL2Facade,
@@ -24,10 +26,13 @@ pub struct Window {
 
     pub program: glium::Program, // TODO: map
 
+    #[cfg(feature = "shader-reload")]
     _watcher: notify::INotifyWatcher,
+    #[cfg(feature = "shader-reload")]
     resources_update_rx: std::sync::mpsc::Receiver<notify::DebouncedEvent>,
 }
 
+// loads a vertex and fragment shader from file and compiles it
 fn load_shader_program<F: Facade + ?Sized, P: AsRef<Path>>(
     facade: &F,
     vertex_file: P,
@@ -76,7 +81,16 @@ impl Window {
         .unwrap();
 
         // setup basic shaders
-        // TODO: find proper paths
+        #[cfg(not(feature = "shader-reload"))]
+        let program = glium::Program::from_source(
+            &display,
+            &include_str!("resources/vertex.glsl"),
+            &include_str!("resources/fragment.glsl"),
+            None,
+        )
+        .unwrap();
+
+        #[cfg(feature = "shader-reload")]
         let program = load_shader_program(
             &display,
             "mirror/src/resources/vertex.glsl",
@@ -85,11 +99,15 @@ impl Window {
         .unwrap();
 
         // register hot reload handler
-        let (resources_update_tx, resources_update_rx) = channel();
-        let mut watcher = watcher(resources_update_tx, Duration::from_millis(500)).unwrap();
-        watcher
-            .watch("mirror/src/resources", RecursiveMode::NonRecursive)
-            .unwrap();
+        #[cfg(feature = "shader-reload")]
+        let (watcher, resources_update_rx) = {
+            let (resources_update_tx, resources_update_rx) = channel();
+            let mut watcher = watcher(resources_update_tx, Duration::from_millis(500)).unwrap();
+            watcher
+                .watch("mirror/src/resources", RecursiveMode::NonRecursive)
+                .unwrap();
+            (watcher, resources_update_rx)
+        };
 
         Self {
             display,
@@ -100,13 +118,16 @@ impl Window {
 
             program,
 
+            #[cfg(feature = "shader-reload")]
             _watcher: watcher,
+            #[cfg(feature = "shader-reload")]
             resources_update_rx,
         }
     }
 
     pub fn frame<'a>(&'a mut self) -> WindowFrame<'a> {
         // check for file watcher updates
+        #[cfg(feature = "shader-reload")]
         if let Ok(DebouncedEvent::Write(file)) = self.resources_update_rx.try_recv() {
             if file.extension().is_some() && file.extension().unwrap() == "glsl" {
                 match load_shader_program(
