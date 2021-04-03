@@ -1336,7 +1336,9 @@ version = "0.1.0"
 dependencies = [
  "dxgcap",
  "mirror-dto",
+ "trayicon",
  "winapi 0.3.9",
+ "winres",
 ]
 
 [[package]]
@@ -2384,6 +2386,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "trayicon"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9590f7786433fde6ceab08f3764bdf98dd7df9d545a5701d4cccc25f5517bf61"
+dependencies = [
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "unicode-bidi"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2745,6 +2756,15 @@ dependencies = [
  "wayland-client",
  "winapi 0.3.9",
  "x11-dl",
+]
+
+[[package]]
+name = "winres"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff4fb510bbfe5b8992ff15f77a2e6fe6cf062878f0eda00c0f44963a807ca5dc"
+dependencies = [
+ "toml",
 ]
 
 [[package]]
