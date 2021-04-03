@@ -1145,7 +1145,7 @@ checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 [[package]]
 name = "memflow"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#4b430a2b835621745178f7f2aae37f9029b468df"
+source = "git+https://github.com/memflow/memflow?branch=next#3115d264fbcc5556773ceae022af8058b410d5f9"
 dependencies = [
  "bitflags",
  "bumpalo",
@@ -1170,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "memflow-derive"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#4b430a2b835621745178f7f2aae37f9029b468df"
+source = "git+https://github.com/memflow/memflow?branch=next#3115d264fbcc5556773ceae022af8058b410d5f9"
 dependencies = [
  "darling",
  "proc-macro2 1.0.26",
@@ -1195,7 +1195,7 @@ dependencies = [
 [[package]]
 name = "memflow-win32"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#4b430a2b835621745178f7f2aae37f9029b468df"
+source = "git+https://github.com/memflow/memflow?branch=next#3115d264fbcc5556773ceae022af8058b410d5f9"
 dependencies = [
  "dirs 2.0.2",
  "log",

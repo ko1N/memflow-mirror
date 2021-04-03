@@ -125,7 +125,7 @@ fn main() {
 
     // create cursor texture
     let cursor_image_png = image::load(
-        Cursor::new(&include_bytes!("resources/cursor.png")[..]),
+        Cursor::new(&include_bytes!("../resources/cursor.png")[..]),
         image::ImageFormat::Png,
     )
     .expect("unable to load cursor image")

@@ -74,7 +74,7 @@ impl Window {
         let text_system = glium_text::TextSystem::new(&display);
         let font = glium_text::FontTexture::new(
             &display,
-            &include_bytes!("resources/Allerta-Regular.ttf")[..],
+            &include_bytes!("../resources/Allerta-Regular.ttf")[..],
             70,
             glium_text::FontTexture::ascii_character_list(),
         )
@@ -84,8 +84,8 @@ impl Window {
         #[cfg(not(feature = "shader-reload"))]
         let program = glium::Program::from_source(
             &display,
-            &include_str!("resources/vertex.glsl"),
-            &include_str!("resources/fragment.glsl"),
+            &include_str!("../resources/vertex.glsl"),
+            &include_str!("../resources/fragment.glsl"),
             None,
         )
         .unwrap();
@@ -93,8 +93,8 @@ impl Window {
         #[cfg(feature = "shader-reload")]
         let program = load_shader_program(
             &display,
-            "mirror/src/resources/vertex.glsl",
-            "mirror/src/resources/fragment.glsl",
+            "mirror/resources/vertex.glsl",
+            "mirror/resources/fragment.glsl",
         )
         .unwrap();
 
@@ -104,7 +104,7 @@ impl Window {
             let (resources_update_tx, resources_update_rx) = channel();
             let mut watcher = watcher(resources_update_tx, Duration::from_millis(500)).unwrap();
             watcher
-                .watch("mirror/src/resources", RecursiveMode::NonRecursive)
+                .watch("mirror/resources", RecursiveMode::NonRecursive)
                 .unwrap();
             (watcher, resources_update_rx)
         };
@@ -132,8 +132,8 @@ impl Window {
             if file.extension().is_some() && file.extension().unwrap() == "glsl" {
                 match load_shader_program(
                     &self.display,
-                    "mirror/src/resources/vertex.glsl",
-                    "mirror/src/resources/fragment.glsl",
+                    "mirror/resources/vertex.glsl",
+                    "mirror/resources/fragment.glsl",
                 ) {
                     Ok(program) => {
                         info!("shader reload successful");
