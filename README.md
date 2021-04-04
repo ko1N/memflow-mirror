@@ -51,3 +51,10 @@ RUST_SETPTRACE=1 cargo run --release --bin mirror --features shader-reload -- -v
 
 [![mirror demo](http://img.youtube.com/vi/H-1wxAeocGA/0.jpg)](http://www.youtube.com/watch?v=H-1wxAeocGA "mirror demo")
 
+## License
+
+Licensed under MIT License, see [LICENSE](LICENSE).
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, shall be licensed as above, without any additional terms or conditions.
