@@ -9,6 +9,11 @@ cargo build --release --bin mirror-guest --all-features
 ```
 Then run the mirror-guest.exe from the target/release/ directory.
 
+For improved performance you might want to run the mirror-guest with system privileges. Just open powershell as an Administrator and run:
+```bash
+PsExec -s -i -d "C:\path\to\mirror-guest.exe"
+```
+
 Run the mirror tool with:
 ```bash
 RUST_SETPTRACE=1 cargo run --release --bin mirror -- -vvv --connector qemu_procfs --process mirror-guest.exe
