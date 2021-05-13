@@ -104,11 +104,11 @@ fn main() {
         .virt_mem()
         .virt_read(marker_addr)
         .expect("unable to read global buffer");
-    println!(
+    info!(
         "found resolution: {}x{}",
         global_buffer.width, global_buffer.height
     );
-    println!("found frame_buffer addr: {:x}", global_buffer.frame_buffer);
+    info!("found frame_buffer addr: {:x}", global_buffer.frame_buffer);
 
     // pre-allocate frame_buffer
     let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
@@ -140,6 +140,7 @@ fn main() {
     let mut frame_counter = FrameCounter::new(100f64);
     let mut update_counter = FrameCounter::new(100f64);
 
+    let fill_window = matches.is_present("fill");
     let mut previous_frame_counter = 0;
     loop {
         frame_counter.tick();
@@ -157,7 +158,7 @@ fn main() {
             if texture.width() != global_buffer.width as u32
                 || texture.height() != global_buffer.height as u32
             {
-                println!(
+                info!(
                     "changing resolution: to {}x{}",
                     global_buffer.width, global_buffer.height
                 );
@@ -198,22 +199,38 @@ fn main() {
 
         let mut frame = wnd.frame();
 
+        // compute rendering position
+        let window_size = frame.window.display.window().drawable_size();
+        let window_aspect = window_size.0 as f32 / window_size.1 as f32;
+        let capture_aspect = texture.width() as f32 / texture.height() as f32;
+        let (x, y, w, h) = if !fill_window {
+            if window_aspect >= capture_aspect {
+                let target_width = 2.0 * capture_aspect / window_aspect;
+                (-1.0 + (2.0 - target_width) / 2.0, 1.0, target_width, -2.0)
+            } else {
+                let target_height = 2.0 * window_aspect / capture_aspect;
+                (-1.0, 1.0 - (2.0 - target_height) / 2.0, 2.0, -target_height)
+            }
+        } else {
+            (-1.0, 1.0, 2.0, -2.0)
+        };
+
         // draw texture
-        frame.draw_texture(-1.0, 1.0, 2.0, -2.0, &texture, false);
+        frame.draw_texture(x, y, w, h, &texture, false);
 
         // draw cursor
         if global_buffer.cursor.is_visible != 0 {
             let scale = (
-                2.0 / global_buffer.width as f32,
-                2.0 / global_buffer.height as f32,
+                w / global_buffer.width as f32,
+                -h / global_buffer.height as f32,
             );
             let dimensions = (
                 scale.0 * cursor_dimensions.0 as f32,
                 scale.1 * cursor_dimensions.1 as f32,
             );
             frame.draw_texture(
-                -1.0 + scale.0 * global_buffer.cursor.x as f32,
-                1.0 - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
+                x + scale.0 * global_buffer.cursor.x as f32,
+                y - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
                 dimensions.0,
                 dimensions.1,
                 &cursor_texture,

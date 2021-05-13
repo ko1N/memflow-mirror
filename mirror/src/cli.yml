@@ -27,3 +27,7 @@ args:
     short: s
     long: vsync
     help: enables vsync
+- fill:
+    short: f
+    long: fill
+    help: always fill the target to the mirror window

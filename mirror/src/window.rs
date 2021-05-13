@@ -59,7 +59,7 @@ impl Window {
         let sdl = sdl2::init().unwrap();
         let video_subsystem = sdl.video().unwrap();
         let display = video_subsystem
-            .window("mirror", 1920, 1080)
+            .window("Memflow Mirror", 1280, 720)
             .resizable()
             .build_glium()
             .unwrap();
