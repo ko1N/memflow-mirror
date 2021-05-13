@@ -54,7 +54,6 @@ extern crate glium;
 extern crate sdl2;
 
 use std::cell::UnsafeCell;
-use std::mem;
 use std::ops::Deref;
 use std::os::raw::c_void;
 use std::rc::Rc;
@@ -253,7 +252,8 @@ impl SDL2WindowBackend {
         window
     }
 
-    fn window_mut(&mut self) -> &mut Window {
+    #[allow(clippy::mut_from_ref)]
+    fn window_mut(&self) -> &mut Window {
         let ptr = self.window.get();
         let window: &mut Window = unsafe { &mut *ptr };
         window

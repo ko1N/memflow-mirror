@@ -2,10 +2,13 @@ mod glium_sdl2;
 use glium_sdl2::DisplayBuild;
 
 use std::path::Path;
-use std::sync::mpsc::channel;
-use std::time::Duration;
 
+#[allow(unused)]
 use log::{info, warn};
+#[allow(unused)]
+use std::sync::mpsc::channel;
+#[allow(unused)]
+use std::time::Duration;
 
 use glium::{
     backend::Facade, implement_vertex, texture::SrgbTexture2d, uniform,
@@ -33,6 +36,7 @@ pub struct Window {
 }
 
 // loads a vertex and fragment shader from file and compiles it
+#[allow(unused)]
 fn load_shader_program<F: Facade + ?Sized, P: AsRef<Path>>(
     facade: &F,
     vertex_file: P,
