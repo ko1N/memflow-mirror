@@ -15,13 +15,13 @@ use mirror_dto::GlobalBufferRaw;
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
 
-    // 0D 0E 0A 0D 0B 0A 0B 0E
-    let re = Regex::new("(?-u)\\x0D\\x0E\\x0A\\x0D\\x0B\\x0A\\x0B\\x0E")
+    // 0D 0E 0A 0D 0B 0A 0B 0E ? ? ? ? 0 0 0 0
+    // since the global buffer contains 2 resolution values (width and height) right after the marker
+    // and the resolution is definatly smaller than u32::MAX we can narrow down the search
+    // by adding those trailing 0's to the scan
+    let re = Regex::new("(?-u)\\x0D\\x0E\\x0A\\x0D\\x0B\\x0A\\x0B\\x0E(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00")
         .expect("malformed marker signature");
-    let buf_offs = re
-        .find_iter(&module_buf[..])
-        .nth(1)? // TODO: fixme
-        .start();
+    let buf_offs = re.find_iter(&module_buf[..]).next()?.start();
 
     Some(buf_offs as usize)
 }
@@ -172,10 +172,9 @@ fn main() {
             // update frame_buffer
             virt_mem
                 .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
-                .data_part()
-                .unwrap();
+                .ok();
             global_buffer.frame_read_counter = global_buffer.frame_counter;
-            virt_mem.virt_write(marker_addr, &global_buffer).unwrap();
+            virt_mem.virt_write(marker_addr, &global_buffer).ok();
 
             // update image
             let new_image = glium::texture::RawImage2d::from_raw_rgba(

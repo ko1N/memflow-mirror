@@ -4,7 +4,7 @@ use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::slice;
 
-use log::{info, error, LevelFilter};
+use log::{error, info, LevelFilter};
 
 use trayicon::*;
 use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
@@ -138,7 +138,10 @@ fn main() {
                         }
 
                         // forcefully overwrite resolution to prevent swap-outs
-                        std::ptr::write_volatile(&mut global_buffer.marker, [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE]);
+                        std::ptr::write_volatile(
+                            &mut global_buffer.marker,
+                            [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                        );
                         std::ptr::write_volatile(&mut global_buffer.width, frame.1 .0);
                         std::ptr::write_volatile(&mut global_buffer.height, frame.1 .1);
                         global_buffer
