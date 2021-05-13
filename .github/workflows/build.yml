@@ -8,10 +8,7 @@ env:
 jobs:
 
   build-mirror:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -26,7 +23,7 @@ jobs:
       - name: Build
         run: cargo build --bin mirror-guest --all-features --verbose
 
-  lint:
+  lint-mirror:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -36,4 +33,16 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features
+          args: --bin mirror --all-features
+
+  lint-mirror-guest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - name: Check formatting
+        run: cargo fmt -- --check
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --bin mirror-guest --all-features
