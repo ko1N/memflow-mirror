@@ -125,7 +125,7 @@ impl Window {
         }
     }
 
-    pub fn frame<'a>(&'a mut self) -> WindowFrame<'a> {
+    pub fn frame(&mut self) -> WindowFrame {
         // check for file watcher updates
         #[cfg(feature = "shader-reload")]
         if let Ok(DebouncedEvent::Write(file)) = self.resources_update_rx.try_recv() {
@@ -169,7 +169,7 @@ impl<'a> WindowFrame<'a> {
         for event in self.window.event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => return false,
-                _ => return true,
+                _ => (),
             }
         }
         true

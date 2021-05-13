@@ -2,7 +2,6 @@ use std::io::Cursor;
 
 use clap::{load_yaml, App};
 use frame_counter::FrameCounter;
-use image;
 use log::{info, Level};
 
 use memflow::prelude::v1::*;
@@ -21,7 +20,7 @@ fn find_marker(module_buf: &[u8]) -> Option<usize> {
     // by adding those trailing 0's to the scan
     let re = Regex::new("(?-u)\\x0D\\x0E\\x0A\\x0D\\x0B\\x0A\\x0B\\x0E(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00")
         .expect("malformed marker signature");
-    let buf_offs = re.find_iter(&module_buf[..]).next()?.start();
+    let buf_offs = re.find_iter(module_buf).next()?.start();
 
     Some(buf_offs as usize)
 }
@@ -44,6 +43,7 @@ fn main() {
         .init()
         .unwrap();
 
+    #[allow(unused)]
     let conn_name = matches
         .value_of("connector")
         .expect("no connector specified");

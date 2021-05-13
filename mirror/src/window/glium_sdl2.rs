@@ -77,13 +77,13 @@ pub enum GliumSdl2Error {
 
 impl From<String> for GliumSdl2Error {
     fn from(s: String) -> GliumSdl2Error {
-        return GliumSdl2Error::ContextCreationError(s);
+        GliumSdl2Error::ContextCreationError(s)
     }
 }
 
 impl From<WindowBuildError> for GliumSdl2Error {
     fn from(err: WindowBuildError) -> GliumSdl2Error {
-        return GliumSdl2Error::WindowBuildError(err);
+        GliumSdl2Error::WindowBuildError(err)
     }
 }
 
@@ -217,10 +217,7 @@ impl<'a> DisplayBuild for &'a mut sdl2::video::WindowBuilder {
         let backend = Rc::new(SDL2WindowBackend::new(self)?);
         let context = unsafe { Context::new(backend.clone(), true, debug) }?;
 
-        let display = SDL2Facade {
-            context: context,
-            backend: backend,
-        };
+        let display = SDL2Facade { context, backend };
 
         Ok(display)
     }
@@ -232,10 +229,7 @@ impl<'a> DisplayBuild for &'a mut sdl2::video::WindowBuilder {
         let backend = Rc::new(SDL2WindowBackend::new(self)?);
         let context = Context::new(backend.clone(), false, debug)?;
 
-        let display = SDL2Facade {
-            context: context,
-            backend: backend,
-        };
+        let display = SDL2Facade { context, backend };
 
         Ok(display)
     }
@@ -249,19 +243,19 @@ pub struct SDL2WindowBackend {
 impl SDL2WindowBackend {
     fn subsystem(&self) -> &VideoSubsystem {
         let ptr = self.window.get();
-        let window: &Window = unsafe { mem::transmute(ptr) };
+        let window: &Window = unsafe { &mut *ptr };
         window.subsystem()
     }
 
     fn window(&self) -> &Window {
         let ptr = self.window.get();
-        let window: &Window = unsafe { mem::transmute(ptr) };
+        let window: &Window = unsafe { &mut *ptr };
         window
     }
 
-    fn window_mut(&self) -> &mut Window {
+    fn window_mut(&mut self) -> &mut Window {
         let ptr = self.window.get();
-        let window: &mut Window = unsafe { mem::transmute(ptr) };
+        let window: &mut Window = unsafe { &mut *ptr };
         window
     }
 
@@ -273,7 +267,7 @@ impl SDL2WindowBackend {
 
         Ok(SDL2WindowBackend {
             window: UnsafeCell::new(window),
-            context: context,
+            context,
         })
     }
 }
