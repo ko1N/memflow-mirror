@@ -54,13 +54,13 @@ fn raise_gpu_priority() {
 }
 
 fn main() {
-    let service_log_path = ::std::env::current_exe()
+    let log_path = ::std::env::current_exe()
         .unwrap()
         .with_file_name("mirror-guest.log");
 
     // setup logging
     let log_filter = LevelFilter::Trace;
-    match simple_logging::log_to_file(&service_log_path, log_filter) {
+    match simple_logging::log_to_file(&log_path, log_filter) {
         Ok(_) => info!("logging initialized with level {:?}", log_filter),
         Err(err) => {
             panic!("unable to initialize logging: {}", err);
@@ -138,6 +138,7 @@ fn main() {
                         }
 
                         // forcefully overwrite resolution to prevent swap-outs
+                        std::ptr::write_volatile(&mut global_buffer.marker, [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE]);
                         std::ptr::write_volatile(&mut global_buffer.width, frame.1 .0);
                         std::ptr::write_volatile(&mut global_buffer.height, frame.1 .1);
                         global_buffer

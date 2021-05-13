@@ -2,7 +2,7 @@ use memflow::prelude::v1::Pod;
 
 #[repr(C)]
 pub struct GlobalBuffer {
-    _marker: [u8; 8],            // 0x0
+    pub marker: [u8; 8],         // 0x0
     pub width: usize,            // 0x8
     pub height: usize,           // 0x10
     pub frame_counter: u32,      // 0x18
@@ -13,7 +13,7 @@ pub struct GlobalBuffer {
 
 #[repr(C)]
 pub struct GlobalBufferRaw {
-    _marker: [u8; 8],            // 0x0
+    pub marker: [u8; 8],         // 0x0
     pub width: usize,            // 0x8
     pub height: usize,           // 0x10
     pub frame_counter: u32,      // 0x18
@@ -27,7 +27,7 @@ unsafe impl Pod for GlobalBufferRaw {}
 impl GlobalBuffer {
     pub fn new(resolution: (usize, usize)) -> Self {
         Self {
-            _marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+            marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
             width: resolution.0,
             height: resolution.1,
             frame_counter: 0,
