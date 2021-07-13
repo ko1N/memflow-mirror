@@ -171,6 +171,7 @@ impl<'a> WindowFrame<'a> {
         self.frame.finish().unwrap();
 
         for event in self.window.event_pump.poll_iter() {
+            #[allow(clippy::single_match)]
             match event {
                 sdl2::event::Event::Quit { .. } => return false,
                 _ => (),

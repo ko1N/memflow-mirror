@@ -144,9 +144,7 @@ fn main() {
         frame_counter.tick();
 
         // check if a frame buffer is necessary
-        process
-            .read_into(marker_addr, &mut global_buffer)
-            .unwrap();
+        process.read_into(marker_addr, &mut global_buffer).unwrap();
         if global_buffer.frame_counter != previous_frame_counter {
             update_counter.tick();
 
