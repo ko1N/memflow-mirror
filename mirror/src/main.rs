@@ -91,8 +91,7 @@ fn main() {
 
     // read entire module for sigscanning
     let module_buf = process
-        .virt_mem()
-        .virt_read_raw(module_info.base, module_info.size)
+        .read_raw(module_info.base, module_info.size)
         .data_part()
         .expect("unable to read module");
 
@@ -101,8 +100,7 @@ fn main() {
     let marker_addr = module_info.base + marker_offs;
 
     let mut global_buffer: GlobalBufferRaw = process
-        .virt_mem()
-        .virt_read(marker_addr)
+        .read(marker_addr)
         .expect("unable to read global buffer");
     info!(
         "found resolution: {}x{}",
@@ -145,11 +143,9 @@ fn main() {
     loop {
         frame_counter.tick();
 
-        let virt_mem = process.virt_mem();
-
         // check if a frame buffer is necessary
-        virt_mem
-            .virt_read_into(marker_addr, &mut global_buffer)
+        process
+            .read_into(marker_addr, &mut global_buffer)
             .unwrap();
         if global_buffer.frame_counter != previous_frame_counter {
             update_counter.tick();
@@ -171,11 +167,11 @@ fn main() {
             }
 
             // update frame_buffer
-            virt_mem
-                .virt_read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
+            process
+                .read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
                 .ok();
             global_buffer.frame_read_counter = global_buffer.frame_counter;
-            virt_mem.virt_write(marker_addr, &global_buffer).ok();
+            process.write(marker_addr, &global_buffer).ok();
 
             // update image
             let new_image = glium::texture::RawImage2d::from_raw_rgba(
