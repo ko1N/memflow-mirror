@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::io::Cursor;
 
 use clap::{load_yaml, App};
@@ -91,7 +92,7 @@ fn main() {
 
     // read entire module for sigscanning
     let module_buf = process
-        .read_raw(module_info.base, module_info.size)
+        .read_raw(module_info.base, module_info.size.try_into().unwrap())
         .data_part()
         .expect("unable to read module");
 
