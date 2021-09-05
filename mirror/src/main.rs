@@ -64,10 +64,11 @@ fn main() {
             .expect("unable to instantiate win32 instance with qemu_procfs connector")
     };
 
+    // load connector/os via inventory
+    #[cfg(not(feature = "memflow-static"))]
+    let inventory = Inventory::scan();
     #[cfg(not(feature = "memflow-static"))]
     let os = {
-        // load connector/os via inventory
-        let inventory = Inventory::scan();
         inventory
             .builder()
             .connector(conn_name)
