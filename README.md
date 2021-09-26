@@ -14,7 +14,7 @@ For improved performance you might want to run the mirror-guest with system priv
 PsExec -s -i -d "C:\path\to\mirror-guest.exe"
 ```
 
-In case you encounter a `No such file or directory` error from the build.rs script make sure to install the (dependencies of the winres crate)[https://github.com/mxre/winres#toolkit].
+In case you encounter a `No such file or directory` error from the build.rs script make sure to install the [dependencies of the winres crate](https://github.com/mxre/winres#toolkit).
 
 Run the mirror tool with:
 ```bash
