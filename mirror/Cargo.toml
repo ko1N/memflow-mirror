@@ -18,7 +18,7 @@ log = "0.4.8"
 regex = "1" # TODO: replace with pattern-scanner lib
 
 # renderer
-sdl2 = { version = "0.34.0", features = ["bundled", "static-link"] }
+sdl2 = { version = "0.35.1", features = [] }
 glium = "0.26"
 glium_text_rusttype = "0.3.3"
 cgmath = "0.17"

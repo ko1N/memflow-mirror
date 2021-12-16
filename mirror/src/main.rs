@@ -154,16 +154,20 @@ fn main() {
             if texture.width() != global_buffer.width as u32
                 || texture.height() != global_buffer.height as u32
             {
-                info!(
-                    "changing resolution: to {}x{}",
-                    global_buffer.width, global_buffer.height
-                );
-                frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
-                let new_image = glium::texture::RawImage2d::from_raw_rgba(
-                    frame_buffer.clone(),
-                    (global_buffer.width as u32, global_buffer.height as u32),
-                );
-                texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+                // limit to 16k resolution
+                if global_buffer.width <= 15360 && global_buffer.height <= 8640 {
+                    info!(
+                        "changing resolution: to {}x{}",
+                        global_buffer.width, global_buffer.height
+                    );
+                    frame_buffer =
+                        vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
+                    let new_image = glium::texture::RawImage2d::from_raw_rgba(
+                        frame_buffer.clone(),
+                        (global_buffer.width as u32, global_buffer.height as u32),
+                    );
+                    texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+                }
             }
 
             // update frame_buffer

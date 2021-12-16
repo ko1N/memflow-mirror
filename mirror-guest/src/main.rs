@@ -131,36 +131,38 @@ fn main() {
 
                 unsafe {
                     if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                        // TODO: doesnt work for all resolutions?
                         if global_buffer.frame_buffer.len() != frame.0.len() * 4 {
                             info!("changing resolution: {:?}", frame.1);
                             global_buffer.frame_buffer = vec![0u8; frame.0.len() * 4];
                         }
 
-                        // forcefully overwrite resolution to prevent swap-outs
-                        std::ptr::write_volatile(
-                            &mut global_buffer.marker,
-                            [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
-                        );
-                        std::ptr::write_volatile(&mut global_buffer.width, frame.1 .0);
-                        std::ptr::write_volatile(&mut global_buffer.height, frame.1 .1);
+                        // TODO: store frame buffer copy to rewrite it as well down below
                         global_buffer
                             .frame_buffer
                             .copy_from_slice(slice::from_raw_parts(
                                 frame.0.as_ptr() as *const u8,
                                 frame.0.len() * 4,
                             ));
-                        global_buffer.frame_counter = frame_counter;
                     }
                 }
             }
         }
 
-        // update cursor regardless of the frame_buffer state
+        // write metadata + cursor state in any case to prevent swap-outs on inactivity
         if let Ok(cursor) = cursor::get_state() {
             unsafe {
                 if let Some(global_frame) = &mut GLOBAL_BUFFER {
-                    global_frame.cursor = cursor;
+                    // forcefully update metadata to prevent swap-outs
+                    std::ptr::write_volatile(
+                        &mut global_buffer.marker,
+                        [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                    );
+                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
+                    std::ptr::write_volatile(&mut global_buffer.width, frame.1 .0);
+                    std::ptr::write_volatile(&mut global_buffer.height, frame.1 .1);
+
+                    // update cursor
+                    std::ptr::write_volatile(&mut global_frame.cursor, cursor);
                 }
             }
         }
