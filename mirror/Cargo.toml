@@ -9,7 +9,7 @@ clap = { version = "2.33.0", features = ["yaml"] }
 
 [dependencies]
 memflow = { git = "https://github.com/memflow/memflow", branch = "next", features = ["plugins"] }
-memflow-win32 = { git = "https://github.com/memflow/memflow", branch = "next", optional = true }
+memflow-win32 = { git = "https://github.com/memflow/memflow-win32", branch = "main", optional = true }
 memflow-qemu-procfs = { git = "https://github.com/memflow/memflow-qemu-procfs", branch = "next", optional = true }
 mirror-dto = { path = "../mirror-dto" }
 clap = { version = "2.33.0", features = ["yaml"] }
