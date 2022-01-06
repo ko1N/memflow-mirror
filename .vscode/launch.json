@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--connector", "qemu_procfs", "-vvv", "--process", "mirror-guest.exe"],
+            "args": ["--connector", "qemu", "-vvv", "--process", "mirror-guest.exe"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -46,7 +46,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/mirror",
-            "args": ["--connector", "qemu_procfs", "-vvv"],
+            "args": ["--connector", "qemu", "-vvv"],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],

@@ -48,20 +48,23 @@ fn main() {
     let conn_name = matches
         .value_of("connector")
         .expect("no connector specified");
-    let conn_args = Args::parse(matches.value_of("args").unwrap_or_default())
+    let conn_args = matches
+        .value_of("args")
+        .unwrap_or_default()
+        .parse()
         .expect("unable to parse connector arguments");
 
     // build connector + os
     #[cfg(feature = "memflow-static")]
     let os = {
         // load connector/os statically
-        let connector = memflow_qemu_procfs::create_connector(&conn_args, level)
-            .expect("unable to create qemu_procfs connector");
+        let connector = memflow_qemu::create_connector(&conn_args, level)
+            .expect("unable to create qemu connector");
 
         memflow_win32::prelude::Win32Kernel::builder(connector)
             .build_default_caches()
             .build()
-            .expect("unable to instantiate win32 instance with qemu_procfs connector")
+            .expect("unable to instantiate win32 instance with qemu connector")
     };
 
     // load connector/os via inventory
