@@ -293,9 +293,9 @@ impl DXGIManager {
     }
 
     /// Set index of capture source to capture from
-    pub fn set_capture_source_index(&mut self, cs: usize) {
+    pub fn set_capture_source_index(&mut self, cs: usize) -> Result<(), ()> {
         self.capture_source_index = cs;
-        self.acquire_output_duplication().unwrap()
+        self.acquire_output_duplication()
     }
 
     pub fn get_capture_source_index(&self) -> usize {

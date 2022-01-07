@@ -48,10 +48,14 @@ fn main() {
     let conn_name = matches
         .value_of("connector")
         .expect("no connector specified");
-    let conn_args = Args::parse(matches.value_of("args").unwrap_or_default())
+    let conn_args = matches
+        .value_of("args")
+        .unwrap_or_default()
+        .parse()
         .expect("unable to parse connector arguments");
+    let conn_args = ConnectorArgs::new(None, conn_args, None);
 
-    // build connector + os
+    // build connector + osy
     #[cfg(feature = "memflow-static")]
     let os = {
         // load connector/os statically
@@ -213,7 +217,7 @@ fn main() {
 
         // draw texture
         frame.draw_texture(x, y, w, h, &texture, false);
-
+        let offset = 0;//1920;
         // draw cursor
         if global_buffer.cursor.is_visible != 0 {
             let scale = (
@@ -225,7 +229,7 @@ fn main() {
                 scale.1 * cursor_dimensions.1 as f32,
             );
             frame.draw_texture(
-                x + scale.0 * global_buffer.cursor.x as f32,
+                x + scale.0 * (global_buffer.cursor.x - offset) as f32,
                 y - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
                 dimensions.0,
                 dimensions.1,

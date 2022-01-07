@@ -9,6 +9,7 @@ pub struct GlobalBuffer {
     pub frame_read_counter: u32, // 0x20
     pub frame_buffer: Vec<u8>,   // 0x28
     pub cursor: Cursor,          //
+    pub screen_index: usize,
 }
 
 #[repr(C)]
@@ -21,11 +22,12 @@ pub struct GlobalBufferRaw {
     pub frame_buffer: u64,       // 0x28
     pad0: [u8; 0x10],            //
     pub cursor: Cursor,          //
+    pub screen_index: usize,
 }
 unsafe impl Pod for GlobalBufferRaw {}
 
 impl GlobalBuffer {
-    pub fn new(resolution: (usize, usize)) -> Self {
+    pub fn new(resolution: (usize, usize), screen_index: usize) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
             width: resolution.0,
@@ -34,6 +36,7 @@ impl GlobalBuffer {
             frame_read_counter: 0,
             frame_buffer: vec![0u8; resolution.0 * resolution.1 * 4],
             cursor: Cursor::default(),
+            screen_index: screen_index,
         }
     }
 }

@@ -6,7 +6,7 @@ use winapi::um::winuser::{GetCursorInfo, CURSORINFO, CURSOR_SHOWING};
 
 use mirror_dto::Cursor;
 
-pub fn get_state() -> Result<Cursor, &'static str> {
+pub fn get_state(offset: i32) -> Result<Cursor, &'static str> {
     let mut ci = CURSORINFO {
         cbSize: size_of::<CURSORINFO>() as u32,
         flags: 0,
@@ -18,7 +18,7 @@ pub fn get_state() -> Result<Cursor, &'static str> {
         Ok(Cursor {
             is_visible: if ci.flags == CURSOR_SHOWING { 1 } else { 0 },
             cursor_id: ci.hCursor as u32,
-            x: ci.ptScreenPos.x,
+            x: ci.ptScreenPos.x - offset,
             y: ci.ptScreenPos.y,
         })
     } else {

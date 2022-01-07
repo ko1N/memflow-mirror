@@ -6,11 +6,12 @@ use std::slice;
 
 use log::{error, info, LevelFilter};
 
-use trayicon::*;
+use trayicon::{Icon, MenuBuilder, MenuItem, TrayIconBuilder};
 use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::processthreadsapi::GetCurrentProcess;
 use winapi::um::winnt::HANDLE;
 use winapi::um::winuser;
+use std::sync::mpsc::channel;
 
 mod dxgi;
 use dxgi::DXGIManager;
@@ -72,19 +73,32 @@ fn main() {
     // create tray icon
     #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     enum Events {
+        NextScreen,
         Exit,
     }
     let (send, recv) = std::sync::mpsc::channel::<Events>();
+    let mut change_screen_menu = MenuBuilder::new().item("Next Screen", Events::NextScreen);
     let _tray_icon = TrayIconBuilder::new()
         .sender(send)
         .icon_from_buffer(include_bytes!("../resources/icon.ico"))
         .tooltip("memflow mirror guest agent")
-        .menu(MenuBuilder::new().item("E&xit", Events::Exit))
+        .menu(MenuBuilder::new().submenu("Change Screen", change_screen_menu).item("E&xit", Events::Exit))
         .build()
         .expect("unable to create tray icon");
+    let mut screen_index = 0;
+    let (tx_screen_num, rx_screen_num) = channel();
+    let (tx_reset_screen_num, rx_reset_screen_num) = channel();
 
     std::thread::spawn(move || {
         recv.iter().for_each(|m| match m {
+            Events::NextScreen => {
+                let should_reset_idx = rx_reset_screen_num.try_recv().unwrap_or(false);
+                if should_reset_idx {
+                    screen_index = 0;
+                }
+                screen_index += 1;
+                tx_screen_num.send(screen_index).expect("could not send on channel");
+            }
             Events::Exit => {
                 std::process::exit(0);
             }
@@ -92,16 +106,17 @@ fn main() {
     });
 
     raise_gpu_priority();
-
     let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
     let resolution = dxgi.geometry();
     info!("resolution: {:?}", resolution);
     unsafe {
-        GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution));
+        GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution, screen_index));
     }
 
     // main application loop
     let mut frame_counter = 0u32;
+    let mut last_output = 0;
+    let mut x_offset: i32 = 0;
     loop {
         // tray icon loop
         unsafe {
@@ -112,6 +127,22 @@ fn main() {
                 winuser::DispatchMessageA(msg.as_ptr());
             }
         }
+        let m = rx_screen_num.try_recv().unwrap_or(last_output);
+        if m != last_output {
+            match dxgi.set_capture_source_index(m) {
+                Ok(_) => {
+                    last_output = m;
+                    x_offset += dxgi.geometry().0 as i32;
+                },
+                Err(_) => {
+                    last_output = 0;
+                    x_offset = 0;
+                    tx_reset_screen_num.send(true).expect("could not send reset signal");
+                    dxgi.set_capture_source_index(last_output);
+                }
+            };
+        }
+        
 
         // check if the frame has been read and we need to generate a new one
         let update_frame = unsafe {
@@ -157,7 +188,7 @@ fn main() {
         }
 
         // update cursor regardless of the frame_buffer state
-        if let Ok(cursor) = cursor::get_state() {
+        if let Ok(cursor) = cursor::get_state(x_offset) {
             unsafe {
                 if let Some(global_frame) = &mut GLOBAL_BUFFER {
                     global_frame.cursor = cursor;
