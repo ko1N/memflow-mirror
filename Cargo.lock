@@ -198,9 +198,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "bumpalo"
-version = "3.8.0"
+version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
+checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
 name = "bytemuck"
@@ -373,6 +373,19 @@ name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
+name = "console"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "once_cell",
+ "terminal_size",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "core-foundation"
@@ -623,6 +636,12 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
+name = "encode_unicode"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
 name = "fallible-iterator"
@@ -959,6 +978,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
+dependencies = [
+ "console",
+ "lazy_static",
+ "number_prefix",
+ "regex",
+]
+
+[[package]]
 name = "inotify"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,7 +1193,7 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 [[package]]
 name = "memflow"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#ba80e0e974806d9386c5bf69c0beebedfb24a6bc"
+source = "git+https://github.com/memflow/memflow?branch=next#cf2e6ab9d8bf89b617703dccab88b6f4288d1723"
 dependencies = [
  "abi_stable",
  "bitflags",
@@ -1191,7 +1222,7 @@ dependencies = [
 [[package]]
 name = "memflow-derive"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#ba80e0e974806d9386c5bf69c0beebedfb24a6bc"
+source = "git+https://github.com/memflow/memflow?branch=next#cf2e6ab9d8bf89b617703dccab88b6f4288d1723"
 dependencies = [
  "darling",
  "proc-macro-crate",
@@ -1218,24 +1249,26 @@ dependencies = [
 [[package]]
 name = "memflow-qemu"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow-qemu?branch=next#5d4e34388330a7c39286749c8cf29822a03abf70"
+source = "git+https://github.com/memflow/memflow-qemu?branch=next#1ad10fafaffbf3f42dc1694a283dad888b8df54b"
 dependencies = [
  "log",
  "memflow",
  "memflow-native",
+ "qapi",
+ "scan_fmt",
 ]
 
 [[package]]
 name = "memflow-win32"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow-win32?branch=main#94ba500ccce4d0476c9415a4b304625e9d471069"
+source = "git+https://github.com/memflow/memflow-win32?branch=main#ec692375b3293d3d95fa2daf746e30e7b067a737"
 dependencies = [
  "dirs 4.0.0",
  "goblin",
+ "indicatif",
  "log",
  "memflow",
  "no-std-compat",
- "pbr",
  "pdb",
  "pelite",
  "progress-streams",
@@ -1478,6 +1511,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
+
+[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1582,18 +1621,6 @@ name = "paste"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0744126afe1a6dd7f394cb50a716dbe086cb06e255e53d8d0185d82828358fb5"
-
-[[package]]
-name = "pbr"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff5751d87f7c00ae6403eb1fcbba229b9c76c9a30de8c1cf87182177b168cea2"
-dependencies = [
- "crossbeam-channel",
- "libc",
- "time",
- "winapi 0.3.9",
-]
 
 [[package]]
 name = "pdb"
@@ -1703,6 +1730,60 @@ name = "progress-streams"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e965d96c8162c607b0cd8d66047ad3c9fd35273c134d994327882c6e47f986a7"
+
+[[package]]
+name = "qapi"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37a6fe62413c9eec316d34ed057e19e2a47bfa5a6094ccaf6de81ceeefee74a0"
+dependencies = [
+ "log",
+ "qapi-qmp",
+ "qapi-spec",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "qapi-codegen"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "060c83952f4db54e1b6c9e7713dd8b6cec1d14283c91aae89fd8dfeb8d46a960"
+dependencies = [
+ "qapi-parser",
+]
+
+[[package]]
+name = "qapi-parser"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92495a78224a474b73d218f3e945d919cbf6e869219101d584aede89976994e4"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "qapi-qmp"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df6a8fad0de1fe3d8b2bf2fb617579cb1e9d60a470760ed28c93839072cc7084"
+dependencies = [
+ "qapi-codegen",
+ "qapi-spec",
+ "serde",
+]
+
+[[package]]
+name = "qapi-spec"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b360919a24ea5fc02fa762cb01bd8f43b643fee51c585f763257773b4dc5a9e8"
+dependencies = [
+ "base64",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "quote"
@@ -1910,6 +1991,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "scan_fmt"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b53b0a5db882a8e2fdaae0a43f7b39e7e9082389e978398bdf223a55b581248"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "scoped_threadpool"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2109,9 +2199,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "syn"
-version = "1.0.84"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecb2e6da8ee5eb9a61068762a32fa9619cc591ceb055b3687f4cd4051ec2e06b"
+checksum = "a684ac3dcd8913827e18cd09a68384ee66c1de24157e3c556c9ab16d85695fb7"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2131,6 +2221,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
 ]
 
 [[package]]

@@ -44,8 +44,7 @@ fn main() {
             .help("Additional arguments supplied to the connector.")
                 .long("connector-args")
                 .short('a')
-                .takes_value(true)
-                .required(true),
+                .takes_value(true),
         )
         .arg(
             Arg::new("process")
