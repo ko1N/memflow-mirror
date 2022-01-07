@@ -193,7 +193,7 @@ fn main() {
                 if let Some(global_buffer) = &mut GLOBAL_BUFFER {
                     // forcefully update metadata to prevent swap-outs
                     std::ptr::write_volatile(
-                        &mut global_frame.marker,
+                        &mut global_buffer.marker,
                         [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
                     );
 
