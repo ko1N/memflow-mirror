@@ -204,9 +204,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "bumpalo"
-version = "3.9.1"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
+checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
 
 [[package]]
 name = "bytemuck"
@@ -1182,7 +1182,7 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 [[package]]
 name = "memflow"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#2459fa3d428c3b2dbb29a1ea97a0584059e192f3"
+source = "git+https://github.com/memflow/memflow?branch=next#ba80e0e974806d9386c5bf69c0beebedfb24a6bc"
 dependencies = [
  "abi_stable",
  "bitflags",
@@ -1211,7 +1211,7 @@ dependencies = [
 [[package]]
 name = "memflow-derive"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#2459fa3d428c3b2dbb29a1ea97a0584059e192f3"
+source = "git+https://github.com/memflow/memflow?branch=next#ba80e0e974806d9386c5bf69c0beebedfb24a6bc"
 dependencies = [
  "darling",
  "proc-macro-crate",
@@ -1238,7 +1238,7 @@ dependencies = [
 [[package]]
 name = "memflow-qemu"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow-qemu?branch=next#c71c242cd3d5a3adf6d46a9900e3bab72ac80840"
+source = "git+https://github.com/memflow/memflow-qemu?branch=next#5d4e34388330a7c39286749c8cf29822a03abf70"
 dependencies = [
  "log",
  "memflow",
@@ -1248,7 +1248,7 @@ dependencies = [
 [[package]]
 name = "memflow-win32"
 version = "0.1.5"
-source = "git+https://github.com/memflow/memflow-win32?branch=main#b8dba5eb8f22d424a4f4433f85e64ea126d5e716"
+source = "git+https://github.com/memflow/memflow-win32?branch=main#94ba500ccce4d0476c9415a4b304625e9d471069"
 dependencies = [
  "dirs 4.0.0",
  "goblin",
@@ -2080,7 +2080,8 @@ dependencies = [
 [[package]]
 name = "sdl2"
 version = "0.35.1"
-source = "git+https://github.com/Rust-SDL2/rust-sdl2?branch=master#3aeeefc5521762eaa763ef576bb5d0ff59485085"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f035f8e87735fa3a8437292be49fe6056450f7cbb13c230b4bcd1bdd7279421f"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -2091,7 +2092,8 @@ dependencies = [
 [[package]]
 name = "sdl2-sys"
 version = "0.35.1"
-source = "git+https://github.com/Rust-SDL2/rust-sdl2?branch=master#3aeeefc5521762eaa763ef576bb5d0ff59485085"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94cb479353c0603785c834e2307440d83d196bf255f204f7f6741358de8d6a2f"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -2241,9 +2243,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "syn"
-version = "1.0.85"
+version = "1.0.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a684ac3dcd8913827e18cd09a68384ee66c1de24157e3c556c9ab16d85695fb7"
+checksum = "ecb2e6da8ee5eb9a61068762a32fa9619cc591ceb055b3687f4cd4051ec2e06b"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",

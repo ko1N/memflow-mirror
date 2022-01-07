@@ -59,13 +59,13 @@ fn main() {
     #[cfg(feature = "memflow-static")]
     let os = {
         // load connector/os statically
-        let connector = memflow_qemu_procfs::create_connector(&conn_args, level)
-            .expect("unable to create qemu_procfs connector");
+        let connector = memflow_qemu::create_connector(&conn_args, level)
+            .expect("unable to create qemu connector");
 
         memflow_win32::prelude::Win32Kernel::builder(connector)
             .build_default_caches()
             .build()
-            .expect("unable to instantiate win32 instance with qemu_procfs connector")
+            .expect("unable to instantiate win32 instance with qemu connector")
     };
 
     // load connector/os via inventory
@@ -158,16 +158,20 @@ fn main() {
             if texture.width() != global_buffer.width as u32
                 || texture.height() != global_buffer.height as u32
             {
-                info!(
-                    "changing resolution: to {}x{}",
-                    global_buffer.width, global_buffer.height
-                );
-                frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
-                let new_image = glium::texture::RawImage2d::from_raw_rgba(
-                    frame_buffer.clone(),
-                    (global_buffer.width as u32, global_buffer.height as u32),
-                );
-                texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+                // limit to 16k resolution
+                if global_buffer.width <= 15360 && global_buffer.height <= 8640 {
+                    info!(
+                        "changing resolution: to {}x{}",
+                        global_buffer.width, global_buffer.height
+                    );
+                    frame_buffer =
+                        vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
+                    let new_image = glium::texture::RawImage2d::from_raw_rgba(
+                        frame_buffer.clone(),
+                        (global_buffer.width as u32, global_buffer.height as u32),
+                    );
+                    texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
+                }
             }
 
             // update frame_buffer

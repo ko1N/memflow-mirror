@@ -239,7 +239,7 @@ impl<'a> WindowFrame<'a> {
         let shape = vec![vertex1, vertex2, vertex3, vertex4];
 
         let uniforms = uniform! {
-            tex: texture.sampled().magnify_filter(MagnifySamplerFilter::Nearest),
+            tex: texture.sampled().magnify_filter(MagnifySamplerFilter::Linear), // Nearest
         };
 
         let vertex_buffer = glium::VertexBuffer::new(&self.window.display, &shape).unwrap();

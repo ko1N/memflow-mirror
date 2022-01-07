@@ -8,7 +8,7 @@ edition = "2018"
 clap = { version = "2.33.0", features = ["yaml"] }
 
 [dependencies]
-memflow = { git = "https://github.com/memflow/memflow", branch = "next"}
+memflow = { git = "https://github.com/memflow/memflow", branch = "next", features = ["plugins"] }
 memflow-win32 = { git = "https://github.com/memflow/memflow-win32", branch = "main", optional = true }
 memflow-qemu = { git = "https://github.com/memflow/memflow-qemu", branch = "next", optional = true }
 mirror-dto = { path = "../mirror-dto" }
@@ -18,7 +18,7 @@ log = "0.4.8"
 regex = "1" # TODO: replace with pattern-scanner lib
 
 # renderer
-sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", branch = "master" }
+sdl2 = { version = "0.35.1", features = [] }
 glium = "0.26"
 glium_text_rusttype = "0.3.3"
 cgmath = "0.17"
