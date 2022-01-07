@@ -107,7 +107,7 @@ fn main() {
 
     raise_gpu_priority();
     let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
-    let resolution = dxgi.geometry();
+    let mut resolution = dxgi.geometry();
     info!("resolution: {:?}", resolution);
     unsafe {
         GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution, screen_index));
@@ -164,6 +164,14 @@ fn main() {
                     if let Some(global_buffer) = &mut GLOBAL_BUFFER {
                         if global_buffer.frame_buffer.len() != frame.0.len() * 4 {
                             info!("changing resolution: {:?}", frame.1);
+
+                            // update frame width and height
+                            resolution.0 = frame.1 .0;
+                            resolution.1 = frame.1 .1;
+                            std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                            std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+
+                            // re-allocate buffer
                             global_buffer.frame_buffer = vec![0u8; frame.0.len() * 4];
                         }
 
@@ -182,18 +190,19 @@ fn main() {
         // write metadata + cursor state in any case to prevent swap-outs on inactivity
         if let Ok(cursor) = cursor::get_state(x_offset) {
             unsafe {
-                if let Some(global_frame) = &mut GLOBAL_BUFFER {
+                if let Some(global_buffer) = &mut GLOBAL_BUFFER {
                     // forcefully update metadata to prevent swap-outs
                     std::ptr::write_volatile(
                         &mut global_frame.marker,
                         [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
                     );
-                    std::ptr::write_volatile(&mut global_frame.frame_counter, frame_counter);
-                    std::ptr::write_volatile(&mut global_frame.width, frame.1 .0);
-                    std::ptr::write_volatile(&mut global_frame.height, frame.1 .1);
+
+                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
+                    std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                    std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
 
                     // update cursor
-                    std::ptr::write_volatile(&mut global_frame.cursor, cursor);
+                    std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
                 }
             }
         }

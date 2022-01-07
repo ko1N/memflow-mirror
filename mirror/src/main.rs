@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::io::Cursor;
 
-use clap::{load_yaml, App};
+use clap::{crate_authors, crate_version, App, Arg};
 use frame_counter::FrameCounter;
 use log::{info, Level};
 
@@ -27,10 +27,49 @@ fn find_marker(module_buf: &[u8]) -> Option<usize> {
 }
 
 fn main() {
-    let yaml = load_yaml!("cli.yml");
-    let matches = App::from(yaml).get_matches();
+    let matches = App::new("memflow-mirror")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .arg(Arg::new("verbose").help("Sets the level of verbosity. For example -vv will set the logging level to 'Warn'.").short('v').multiple_occurrences(true))
+        .arg(
+            Arg::new("connector")
+            .help("The name of the memflow connector that you want to use.")
+                .long("connector")
+                .short('c')
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("connector-args")
+            .help("Additional arguments supplied to the connector.")
+                .long("connector-args")
+                .short('a')
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("process")
+            .help("The name of the memflow-guest process running in the vm.")
+                .long("process")
+                .short('p')
+                .takes_value(true)
+                .default_value("mirror-guest.exe"),
+        )
+        .arg(
+            Arg::new("vsync")
+            .help("Enabled vertical synchronization (vsync) in the renderer.")
+                .long("vsync")
+                .short('s')
+        )
+        .arg(
+            Arg::new("stretch")
+            .help("Always stretch the contents to the mirror window.")
+                .long("stretch")
+                .short('f')
+        )
+        .get_matches();
 
-    let level = match matches.occurrences_of("verbose") {
+    let log_level = match matches.occurrences_of("verbose") {
         0 => Level::Error,
         1 => Level::Warn,
         2 => Level::Info,
@@ -38,18 +77,20 @@ fn main() {
         4 => Level::Trace,
         _ => Level::Trace,
     };
-
-    simple_logger::SimpleLogger::new()
-        .with_level(level.to_level_filter())
-        .init()
-        .unwrap();
+    simplelog::TermLogger::init(
+        log_level.to_level_filter(),
+        simplelog::Config::default(),
+        simplelog::TerminalMode::Stdout,
+        simplelog::ColorChoice::Auto,
+    )
+    .unwrap();
 
     #[allow(unused)]
     let conn_name = matches
         .value_of("connector")
         .expect("no connector specified");
     let conn_args = matches
-        .value_of("args")
+        .value_of("connector-args")
         .unwrap_or_default()
         .parse()
         .expect("unable to parse connector arguments");
@@ -59,8 +100,8 @@ fn main() {
     #[cfg(feature = "memflow-static")]
     let os = {
         // load connector/os statically
-        let connector = memflow_qemu::create_connector(&conn_args, level)
-            .expect("unable to create qemu connector");
+        let connector =
+            memflow_qemu::create_connector(&conn_args).expect("unable to create qemu connector");
 
         memflow_win32::prelude::Win32Kernel::builder(connector)
             .build_default_caches()
@@ -144,7 +185,7 @@ fn main() {
     let mut frame_counter = FrameCounter::new(100f64);
     let mut update_counter = FrameCounter::new(100f64);
 
-    let fill_window = matches.is_present("fill");
+    let stretch_to_window = matches.is_present("stretch");
     let mut previous_frame_counter = 0;
     loop {
         frame_counter.tick();
@@ -207,7 +248,7 @@ fn main() {
         let window_size = frame.window.display.window().drawable_size();
         let window_aspect = window_size.0 as f32 / window_size.1 as f32;
         let capture_aspect = texture.width() as f32 / texture.height() as f32;
-        let (x, y, w, h) = if !fill_window {
+        let (x, y, w, h) = if !stretch_to_window {
             if window_aspect >= capture_aspect {
                 let target_width = 2.0 * capture_aspect / window_aspect;
                 (-1.0 + (2.0 - target_width) / 2.0, 1.0, target_width, -2.0)
