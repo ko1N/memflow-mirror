@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install libsdl2-dev
-        run: sudo apt-get install -y libsdl2-dev
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y libsdl2-dev
       - name: Build
         run: cargo build --bin mirror --all-features --verbose
 
