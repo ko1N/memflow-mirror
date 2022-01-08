@@ -29,16 +29,17 @@ Since this project depends on memflow/next it is necessary to install an appropi
 git clone https://github.com/memflow/memflow-qemu
 cd memflow-qemu
 git checkout next
+cargo update
 ./install.sh --system
 ```
 
 The OS Plugin for win32 has to be installed as well:
 ```bash
-git clone https://github.com/memflow/memflow
-cd memflow
+git clone https://github.com/memflow/memflow-win32
+cd memflow-qemu
 git checkout next
-cargo build --release --all-features --workspace
-sudo cp target/release/libmemflow_win32.so /usr/lib/memflow/
+cargo update
+./install.sh --system
 ```
 
 ### Without memflow inventory
