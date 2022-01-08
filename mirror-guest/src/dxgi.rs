@@ -26,7 +26,10 @@ use winapi::um::d3dcommon::*;
 use winapi::um::unknwnbase::*;
 use winapi::um::winnt::GENERIC_READ;
 use winapi::um::winuser::*;
+use winapi::shared::minwindef::{LPARAM, TRUE, BOOL};
 use wio::com::ComPtr;
+use std::io::Error;
+
 
 /// Color represented by additive channels: Blue (b), Green (g), Red (r), and Alpha (a).
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
@@ -249,6 +252,7 @@ pub struct DXGIManager {
     duplicated_output: Option<DuplicatedOutput>,
     capture_source_index: usize,
     timeout_ms: u32,
+    screen_count: usize,
 }
 
 struct SharedPtr<T>(*const T);
@@ -268,11 +272,20 @@ impl DXGIManager {
             }
         }
 
+        // let screen_count = unsafe { }
+        let screens = enumerate_monitors();
+        let screen_count: usize;
+        if screens.is_empty() {
+            screen_count = 0;
+        } else {
+            screen_count = screens.iter().count();
+        }
         let mut manager = DXGIManager {
             desktop,
             duplicated_output: None,
             capture_source_index: 0,
             timeout_ms: timeout_ms,
+            screen_count: screen_count,
         };
 
         match manager.acquire_output_duplication() {
@@ -305,6 +318,10 @@ impl DXGIManager {
     /// Set timeout to use when capturing
     pub fn set_timeout_ms(&mut self, timeout_ms: u32) {
         self.timeout_ms = timeout_ms
+    }
+
+    pub fn get_screen_count(&self) -> usize {
+        return self.screen_count;
     }
 
     /// Duplicate and acquire output selected by `capture_source_index`
@@ -526,6 +543,54 @@ impl Drop for DXGIManager {
             unsafe { CloseDesktop(self.desktop) };
         }
     }
+}
+
+
+fn enumerate_monitors() -> Vec<MONITORINFOEXW> {
+    // Define the vector where we will store the result
+    let mut monitors = Vec::<MONITORINFOEXW>::new();
+    let userdata = &mut monitors as *mut _;
+
+    let result = unsafe {
+        EnumDisplayMonitors(
+            ptr::null_mut(),
+            ptr::null(),
+            Some(enumerate_monitors_callback),
+            userdata as LPARAM,
+        )
+    };
+
+    if result != TRUE {
+        // Get the last error for the current thread.
+        // This is analogous to calling the Win32 API GetLastError.
+        panic!("Could not enumerate monitors: {}", Error::last_os_error());
+    }
+
+    monitors
+}
+
+unsafe extern "system" fn enumerate_monitors_callback(
+    monitor: HMONITOR,
+    _: HDC,
+    _: LPRECT,
+    userdata: LPARAM,
+) -> BOOL {
+    // Get the userdata where we will store the result
+    let monitors: &mut Vec<MONITORINFOEXW> = mem::transmute(userdata);
+
+    // Initialize the MONITORINFOEXW structure and get a pointer to it
+    let mut monitor_info: MONITORINFOEXW = mem::zeroed();
+    monitor_info.cbSize = mem::size_of::<MONITORINFOEXW>() as u32;
+    let monitor_info_ptr = <*mut _>::cast(&mut monitor_info);
+
+    // Call the GetMonitorInfoW win32 API
+    let result = GetMonitorInfoW(monitor, monitor_info_ptr);
+    if result == TRUE {
+        // Push the information we received to userdata
+        monitors.push(monitor_info);
+    }
+
+    TRUE
 }
 
 #[test]

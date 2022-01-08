@@ -128,17 +128,26 @@ fn main() {
             }
         }
         let m = rx_screen_num.try_recv().unwrap_or(last_output);
+        let current_screen_index: usize;
         if m != last_output {
-            match dxgi.set_capture_source_index(m) {
+            last_output = m;
+            if m >= dxgi.get_screen_count() {
+                last_output = 0;
+                x_offset = 0;
+                info!("resetting");
+                current_screen_index = 0;
+                tx_reset_screen_num.send(true).expect("could not send reset signal");
+                dxgi.set_capture_source_index(last_output);
+            } else {
+                x_offset += dxgi.geometry().0 as i32;
+                current_screen_index = m;
+            }
+            match dxgi.set_capture_source_index(current_screen_index) {
                 Ok(_) => {
-                    last_output = m;
-                    x_offset += dxgi.geometry().0 as i32;
+                    info!("changed screen successfully to {}", current_screen_index)
                 },
                 Err(_) => {
-                    last_output = 0;
-                    x_offset = 0;
-                    tx_reset_screen_num.send(true).expect("could not send reset signal");
-                    dxgi.set_capture_source_index(last_output);
+                    info!("Could not set defined source index to {}", m);
                 }
             };
         }
