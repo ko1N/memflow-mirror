@@ -93,7 +93,6 @@ fn main() {
         .unwrap_or_default()
         .parse()
         .expect("unable to parse connector arguments");
-    let conn_args = ConnectorArgs::new(None, conn_args, None);
 
     // build connector + osy
     #[cfg(feature = "memflow-static")]
@@ -261,8 +260,8 @@ fn main() {
 
         // draw texture
         frame.draw_texture(x, y, w, h, &texture, false);
-        let offset = 0;//1920;
-        // draw cursor
+        let offset = 0; //1920;
+                        // draw cursor
         if global_buffer.cursor.is_visible != 0 {
             let scale = (
                 w / global_buffer.width as f32,

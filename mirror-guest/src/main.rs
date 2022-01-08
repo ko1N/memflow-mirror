@@ -6,12 +6,12 @@ use std::slice;
 
 use log::{error, info, LevelFilter};
 
+use std::sync::mpsc::channel;
 use trayicon::{Icon, MenuBuilder, MenuItem, TrayIconBuilder};
 use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::processthreadsapi::GetCurrentProcess;
 use winapi::um::winnt::HANDLE;
 use winapi::um::winuser;
-use std::sync::mpsc::channel;
 
 mod dxgi;
 use dxgi::DXGIManager;
@@ -82,7 +82,11 @@ fn main() {
         .sender(send)
         .icon_from_buffer(include_bytes!("../resources/icon.ico"))
         .tooltip("memflow mirror guest agent")
-        .menu(MenuBuilder::new().submenu("Change Screen", change_screen_menu).item("E&xit", Events::Exit))
+        .menu(
+            MenuBuilder::new()
+                .submenu("Change Screen", change_screen_menu)
+                .item("E&xit", Events::Exit),
+        )
         .build()
         .expect("unable to create tray icon");
     let mut screen_index = 0;
@@ -97,7 +101,9 @@ fn main() {
                     screen_index = 0;
                 }
                 screen_index += 1;
-                tx_screen_num.send(screen_index).expect("could not send on channel");
+                tx_screen_num
+                    .send(screen_index)
+                    .expect("could not send on channel");
             }
             Events::Exit => {
                 std::process::exit(0);
@@ -136,7 +142,9 @@ fn main() {
                 x_offset = 0;
                 info!("resetting");
                 current_screen_index = 0;
-                tx_reset_screen_num.send(true).expect("could not send reset signal");
+                tx_reset_screen_num
+                    .send(true)
+                    .expect("could not send reset signal");
                 dxgi.set_capture_source_index(last_output);
             } else {
                 x_offset += dxgi.geometry().0 as i32;
@@ -145,13 +153,12 @@ fn main() {
             match dxgi.set_capture_source_index(current_screen_index) {
                 Ok(_) => {
                     info!("changed screen successfully to {}", current_screen_index)
-                },
+                }
                 Err(_) => {
                     info!("Could not set defined source index to {}", m);
                 }
             };
         }
-        
 
         // check if the frame has been read and we need to generate a new one
         let update_frame = unsafe {

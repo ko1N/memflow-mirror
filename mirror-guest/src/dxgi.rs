@@ -19,6 +19,8 @@ use winapi::shared::dxgi::{
 use winapi::shared::dxgi1_2::{IDXGIOutput1, IDXGIOutputDuplication};
 use winapi::shared::dxgitype::*;
 // use winapi::shared::ntdef::*;
+use std::io::Error;
+use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
 use winapi::shared::windef::*;
 use winapi::shared::winerror::*;
 use winapi::um::d3d11::*;
@@ -26,10 +28,7 @@ use winapi::um::d3dcommon::*;
 use winapi::um::unknwnbase::*;
 use winapi::um::winnt::GENERIC_READ;
 use winapi::um::winuser::*;
-use winapi::shared::minwindef::{LPARAM, TRUE, BOOL};
 use wio::com::ComPtr;
-use std::io::Error;
-
 
 /// Color represented by additive channels: Blue (b), Green (g), Red (r), and Alpha (a).
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
@@ -544,7 +543,6 @@ impl Drop for DXGIManager {
         }
     }
 }
-
 
 fn enumerate_monitors() -> Vec<MONITORINFOEXW> {
     // Define the vector where we will store the result
