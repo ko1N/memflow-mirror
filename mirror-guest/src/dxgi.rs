@@ -76,6 +76,7 @@ fn d3d11_create_device(
 ) -> (ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>) {
     unsafe {
         let (mut d3d11_device, mut device_context) = (ptr::null_mut(), ptr::null_mut());
+        let mut feature_level = D3D_FEATURE_LEVEL_9_1;
         let hr = D3D11CreateDevice(
             adapter,
             D3D_DRIVER_TYPE_UNKNOWN,
@@ -85,7 +86,7 @@ fn d3d11_create_device(
             0,
             D3D11_SDK_VERSION,
             &mut d3d11_device,
-            &mut D3D_FEATURE_LEVEL_9_1,
+            &mut feature_level,
             &mut device_context,
         );
         if hr_failed(hr) {
@@ -147,6 +148,7 @@ fn get_capture_source(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn duplicate_outputs(
     mut device: ComPtr<ID3D11Device>,
     outputs: Vec<ComPtr<IDXGIOutput>>,
@@ -222,9 +224,9 @@ impl DuplicatedOutput {
         texture_desc.MiscFlags = 0;
         let readable_texture = unsafe {
             let mut readable_texture = ptr::null_mut();
-            let hr =
-                self.device
-                    .CreateTexture2D(&mut texture_desc, ptr::null(), &mut readable_texture);
+            let hr = self
+                .device
+                .CreateTexture2D(&texture_desc, ptr::null(), &mut readable_texture);
             if hr_failed(hr) {
                 return Err(hr);
             }
@@ -265,10 +267,10 @@ impl DXGIManager {
     pub fn new(timeout_ms: u32) -> Result<DXGIManager, &'static str> {
         // try to capture uac
         let desktop = unsafe { OpenInputDesktop(0, 0, GENERIC_READ) };
-        if !desktop.is_null() {
-            if unsafe { SetThreadDesktop(desktop) } == 0 {
-                warn!("Failed to set thread desktop. This will prevent UAC dialogs from being visible.");
-            }
+        if !desktop.is_null() && unsafe { SetThreadDesktop(desktop) } == 0 {
+            warn!(
+                "Failed to set thread desktop. This will prevent UAC dialogs from being visible."
+            );
         }
 
         // let screen_count = unsafe { }
@@ -277,14 +279,14 @@ impl DXGIManager {
         if screens.is_empty() {
             screen_count = 0;
         } else {
-            screen_count = screens.iter().count();
+            screen_count = screens.len();
         }
         let mut manager = DXGIManager {
             desktop,
             duplicated_output: None,
             capture_source_index: 0,
-            timeout_ms: timeout_ms,
-            screen_count: screen_count,
+            timeout_ms,
+            screen_count,
         };
 
         match manager.acquire_output_duplication() {
@@ -310,17 +312,19 @@ impl DXGIManager {
         self.acquire_output_duplication()
     }
 
+    #[allow(unused)]
     pub fn get_capture_source_index(&self) -> usize {
         self.capture_source_index
     }
 
     /// Set timeout to use when capturing
+    #[allow(unused)]
     pub fn set_timeout_ms(&mut self, timeout_ms: u32) {
         self.timeout_ms = timeout_ms
     }
 
     pub fn get_screen_count(&self) -> usize {
-        return self.screen_count;
+        self.screen_count
     }
 
     /// Duplicate and acquire output selected by `capture_source_index`
@@ -340,7 +344,7 @@ impl DXGIManager {
             })
             .take_while(Option::is_some)
             .map(Option::unwrap)
-            .map(|mut adapter| (get_adapter_outputs(&mut adapter), adapter))
+            .map(|adapter| (get_adapter_outputs(&adapter), adapter))
             .filter(|&(ref outs, _)| !outs.is_empty())
         {
             // Creating device for each adapter that has the output
@@ -367,9 +371,9 @@ impl DXGIManager {
             {
                 self.duplicated_output = Some(DuplicatedOutput {
                     device: d3d11_device,
-                    device_context: device_context,
-                    output: output,
-                    output_duplication: output_duplication,
+                    device_context,
+                    output,
+                    output_duplication,
                 });
                 return Ok(());
             }
@@ -378,8 +382,8 @@ impl DXGIManager {
     }
 
     fn capture_frame_to_surface(&mut self) -> Result<ComPtr<IDXGISurface1>, CaptureError> {
-        if let None = self.duplicated_output {
-            if let Ok(_) = self.acquire_output_duplication() {
+        if self.duplicated_output.is_none() {
+            if self.acquire_output_duplication().is_ok() {
                 return Err(CaptureError::Fail("No valid duplicated output"));
             } else {
                 return Err(CaptureError::RefreshFailure);
@@ -394,7 +398,7 @@ impl DXGIManager {
         {
             Ok(surface) => Ok(surface),
             Err(DXGI_ERROR_ACCESS_LOST) => {
-                if let Ok(_) = self.acquire_output_duplication() {
+                if self.acquire_output_duplication().is_ok() {
                     Err(CaptureError::AccessLost)
                 } else {
                     Err(CaptureError::RefreshFailure)
@@ -403,7 +407,7 @@ impl DXGIManager {
             Err(E_ACCESSDENIED) => Err(CaptureError::AccessDenied),
             Err(DXGI_ERROR_WAIT_TIMEOUT) => Err(CaptureError::Timeout),
             Err(_) => {
-                if let Ok(_) = self.acquire_output_duplication() {
+                if self.acquire_output_duplication().is_ok() {
                     Err(CaptureError::Fail("Failure when acquiring frame"))
                 } else {
                     Err(CaptureError::RefreshFailure)
@@ -531,6 +535,7 @@ impl DXGIManager {
     ///
     /// On success, return Vec with pixel components and width and height of frame.
     /// On failure, return CaptureError.
+    #[allow(unused)]
     pub fn capture_frame_components(&mut self) -> Result<(Vec<u8>, (usize, usize)), CaptureError> {
         self.capture_frame_t()
     }

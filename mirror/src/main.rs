@@ -125,12 +125,12 @@ fn main() {
     let proc_name = matches.value_of("process").expect("no process specified");
 
     let mut process = os
-        .into_process_by_name(&proc_name)
+        .into_process_by_name(proc_name)
         .expect("unable to find dxgi-capture process");
     info!("found process: {:?}", process.info());
 
     let module_info = process
-        .module_by_name(&proc_name)
+        .module_by_name(proc_name)
         .expect("unable to find dxgi-capture module in process");
     info!("found module: {:?}", module_info);
 

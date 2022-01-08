@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
+      - name: Install libsdl2-dev
+        run: sudo apt-get install -y libsdl2-dev
       - name: Build
         run: cargo build --bin mirror --all-features --verbose
 
@@ -19,7 +20,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-
       - name: Build
         run: cargo build --bin mirror-guest --all-features --verbose
 

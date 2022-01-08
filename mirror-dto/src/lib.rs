@@ -36,7 +36,7 @@ impl GlobalBuffer {
             frame_read_counter: 0,
             frame_buffer: vec![0u8; resolution.0 * resolution.1 * 4],
             cursor: Cursor::default(),
-            screen_index: screen_index,
+            screen_index,
         }
     }
 }

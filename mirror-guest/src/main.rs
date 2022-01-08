@@ -7,7 +7,7 @@ use std::slice;
 use log::{error, info, LevelFilter};
 
 use std::sync::mpsc::channel;
-use trayicon::{Icon, MenuBuilder, MenuItem, TrayIconBuilder};
+use trayicon::{MenuBuilder, TrayIconBuilder};
 use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::processthreadsapi::GetCurrentProcess;
 use winapi::um::winnt::HANDLE;
@@ -77,7 +77,7 @@ fn main() {
         Exit,
     }
     let (send, recv) = std::sync::mpsc::channel::<Events>();
-    let mut change_screen_menu = MenuBuilder::new().item("Next Screen", Events::NextScreen);
+    let change_screen_menu = MenuBuilder::new().item("Next Screen", Events::NextScreen);
     let _tray_icon = TrayIconBuilder::new()
         .sender(send)
         .icon_from_buffer(include_bytes!("../resources/icon.ico"))
@@ -145,7 +145,7 @@ fn main() {
                 tx_reset_screen_num
                     .send(true)
                     .expect("could not send reset signal");
-                dxgi.set_capture_source_index(last_output);
+                dxgi.set_capture_source_index(last_output).ok();
             } else {
                 x_offset += dxgi.geometry().0 as i32;
                 current_screen_index = m;
