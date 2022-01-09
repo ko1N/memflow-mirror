@@ -1,7 +1,7 @@
 use memflow::prelude::v1::Pod;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TextureMode {
     RGBA = 0,
     BGRA = 1,
