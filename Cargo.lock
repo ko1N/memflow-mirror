@@ -306,7 +306,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time",
+ "time 0.1.43",
  "winapi 0.3.9",
 ]
 
@@ -373,6 +373,17 @@ name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
+name = "colored"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "console"
@@ -908,6 +919,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphic-offsets"
+version = "0.1.0"
+source = "git+https://github.com/ko1N/obs-rs#97d837ced0aaaf74b2da07abb57c523b90365472"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -990,6 +1010,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "inject-helper"
+version = "0.1.0"
+source = "git+https://github.com/ko1N/obs-rs#97d837ced0aaaf74b2da07abb57c523b90365472"
+
+[[package]]
 name = "inotify"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1035,6 +1060,12 @@ checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
+
+[[package]]
+name = "itoa"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
 name = "itoa"
@@ -1404,6 +1435,7 @@ dependencies = [
  "log",
  "log-panics",
  "mirror-dto",
+ "obs-client",
  "simple-logging",
  "trayicon",
  "winapi 0.3.9",
@@ -1532,6 +1564,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "obs-client"
+version = "0.1.0"
+source = "git+https://github.com/ko1N/obs-rs#97d837ced0aaaf74b2da07abb57c523b90365472"
+dependencies = [
+ "graphic-offsets",
+ "inject-helper",
+ "log",
+ "simple_logger",
+ "winapi 0.3.9",
+ "wio",
 ]
 
 [[package]]
@@ -2111,7 +2156,7 @@ version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2bb9cd061c5865d345bb02ca49fcef1391741b672b54a0bf7b679badec3142"
 dependencies = [
- "itoa",
+ "itoa 1.0.1",
  "ryu",
  "serde",
 ]
@@ -2135,6 +2180,19 @@ dependencies = [
  "lazy_static",
  "log",
  "thread-id",
+]
+
+[[package]]
+name = "simple_logger"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45b60258a35dc3cb8a16890b8fd6723349bfa458d7960e25e633f1b1c19d7b5e"
+dependencies = [
+ "atty",
+ "colored",
+ "log",
+ "time 0.3.5",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -2290,6 +2348,23 @@ dependencies = [
  "libc",
  "winapi 0.3.9",
 ]
+
+[[package]]
+name = "time"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+dependencies = [
+ "itoa 0.4.8",
+ "libc",
+ "time-macros",
+]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tinyvec"
