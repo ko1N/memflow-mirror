@@ -221,6 +221,7 @@ fn main() {
                         }
 
                         // TODO: store frame buffer copy to rewrite it as well down below
+                        std::ptr::write_volatile(&mut global_buffer.frame_texmode, frame.texture_mode());
                         frame.copy_frame(&mut global_buffer.frame_buffer);
                     }
                 }

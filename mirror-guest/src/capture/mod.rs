@@ -3,6 +3,8 @@ use dxgi::DXGIManager;
 
 use std::slice;
 
+use mirror_dto::TextureMode;
+
 #[derive(Clone, PartialEq)]
 pub enum CaptureMode {
     //BitBlt,
@@ -105,7 +107,13 @@ impl<'a> Frame<'a> {
         }
     }
 
-    // copy frame
+    pub fn texture_mode(&self) -> TextureMode {
+        match self {
+            Frame::DXGI(_) => TextureMode::BGRA,
+            Frame::OBS(_) => TextureMode::RGBA,
+        }
+    }
+
     pub unsafe fn copy_frame(&self, to: &mut Vec<u8>) {
         match self {
             Frame::DXGI((buffer, _)) => {
