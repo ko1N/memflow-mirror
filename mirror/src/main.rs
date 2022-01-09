@@ -10,7 +10,7 @@ use memflow::prelude::v1::*;
 pub mod window;
 use window::Window;
 
-use mirror_dto::GlobalBufferRaw;
+use mirror_dto::{GlobalBufferRaw, TextureMode};
 
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
@@ -164,6 +164,7 @@ fn main() {
         &frame_buffer[..],
         (global_buffer.width as u32, global_buffer.height as u32),
     );
+    let mut texture_mode = TextureMode::BGRA;
     let mut texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
     // create cursor texture
@@ -227,6 +228,7 @@ fn main() {
             );
 
             // update texture
+            texture_mode = global_buffer.frame_texmode;
             texture.write(
                 glium::Rect {
                     left: 0,
@@ -259,7 +261,7 @@ fn main() {
         };
 
         // draw texture
-        frame.draw_texture(x, y, w, h, &texture, false);
+        frame.draw_texture(x, y, w, h, &texture, texture_mode, false);
         let offset = 0; //1920;
                         // draw cursor
         if global_buffer.cursor.is_visible != 0 {
@@ -277,6 +279,7 @@ fn main() {
                 dimensions.0,
                 dimensions.1,
                 &cursor_texture,
+                TextureMode::RGBA,
                 true,
             );
         }
