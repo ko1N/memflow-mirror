@@ -1437,6 +1437,7 @@ dependencies = [
  "mirror-dto",
  "obs-client",
  "simple-logging",
+ "thread-priority",
  "trayicon",
  "winapi 0.3.9",
  "winres",
@@ -2325,6 +2326,17 @@ checksum = "c7fbf4c9d56b320106cd64fd024dadfa0be7cb4706725fc44a7d7ce952d820c1"
 dependencies = [
  "libc",
  "redox_syscall 0.1.57",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "thread-priority"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f6394af1cf06bf887a5f37ce84c41fd324dff220386adec3c01a85cb66c91b1"
+dependencies = [
+ "libc",
+ "log",
  "winapi 0.3.9",
 ]
 
