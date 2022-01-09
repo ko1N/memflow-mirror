@@ -60,6 +60,28 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "mirror-guest release (Windows)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/release/mirror-guest.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}/target/release/",
+            "environment": [],
+            "console": "externalTerminal"
+        },
+        {
+            "name": "mirror-guest debug (Windows)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/mirror-guest.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}/target/debug/",
+            "environment": [],
+            "console": "externalTerminal"
         }
     ]
 }

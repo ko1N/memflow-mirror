@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 
 use std::ffi::CString;
 use std::mem::MaybeUninit;
@@ -13,10 +13,12 @@ use winapi::um::processthreadsapi::GetCurrentProcess;
 use winapi::um::winnt::HANDLE;
 use winapi::um::winuser;
 
-mod dxgi;
-use dxgi::DXGIManager;
+mod capture;
+use capture::{Capture, CaptureMode};
 
 mod cursor;
+
+mod util;
 
 use mirror_dto::GlobalBuffer;
 
@@ -61,16 +63,19 @@ fn main() {
 
     // setup logging
     let log_filter = LevelFilter::Trace;
-    match simple_logging::log_to_file(&log_path, log_filter) {
+    /*match simple_logging::log_to_file(&log_path, log_filter) {
         Ok(_) => info!("logging initialized with level {:?}", log_filter),
         Err(err) => {
             panic!("unable to initialize logging: {}", err);
         }
     }
+    */
+    simple_logging::log_to(std::io::stdout(), log_filter);
 
     log_panics::init();
 
     // create tray icon
+    /*
     #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     enum Events {
         NextScreen,
@@ -89,8 +94,10 @@ fn main() {
         )
         .build()
         .expect("unable to create tray icon");
+        */
     let mut screen_index = 0;
     let (tx_screen_num, rx_screen_num) = channel();
+    /*
     let (tx_reset_screen_num, rx_reset_screen_num) = channel();
 
     std::thread::spawn(move || {
@@ -110,10 +117,13 @@ fn main() {
             }
         })
     });
+    */
 
     raise_gpu_priority();
-    let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
-    let mut resolution = dxgi.geometry();
+
+    // we start out with dxgi capturing by default
+    let mut capture = Capture::new().expect("unable to start capture");
+    let mut resolution = capture.resolution();
     info!("resolution: {:?}", resolution);
     unsafe {
         GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution, screen_index));
@@ -135,6 +145,7 @@ fn main() {
         }
         let m = rx_screen_num.try_recv().unwrap_or(last_output);
         let current_screen_index: usize;
+        /*
         if m != last_output {
             last_output = m;
             if m >= dxgi.get_screen_count() {
@@ -159,6 +170,7 @@ fn main() {
                 }
             };
         }
+        */
 
         // check if the frame has been read and we need to generate a new one
         let update_frame = unsafe {
@@ -170,34 +182,46 @@ fn main() {
             }
         };
 
+        // detect fullscreen window
+        if let Some(window_name) = util::find_fullscreen_window() {
+            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                println!(
+                    "new fullscreen window detected, trying to switch to obs capture for: {}",
+                    &window_name
+                );
+                capture.set_mode(CaptureMode::OBS(window_name)).ok();
+            }
+        } else {
+            if capture.mode() != CaptureMode::DXGI {
+                println!("fullscreen window closed, trying to switch to dxgi");
+                capture.set_mode(CaptureMode::DXGI).ok();
+            }
+        }
+
         // update frame
         if update_frame {
-            if let Ok(frame) = dxgi.capture_frame() {
+            if let Ok(frame) = capture.capture_frame() {
                 // frame captured, put into global buffer
                 frame_counter += 1;
 
+                let frame_resolution = frame.resolution();
+                let frame_buffer_len = frame.buffer_len();
                 unsafe {
                     if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                        if global_buffer.frame_buffer.len() != frame.0.len() * 4 {
-                            info!("changing resolution: {:?}", frame.1);
+                        if global_buffer.frame_buffer.len() != frame_buffer_len {
+                            info!("Changing resolution: {:?}", frame_resolution);
 
                             // update frame width and height
-                            resolution.0 = frame.1 .0;
-                            resolution.1 = frame.1 .1;
+                            resolution = frame_resolution;
                             std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
                             std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
 
                             // re-allocate buffer
-                            global_buffer.frame_buffer = vec![0u8; frame.0.len() * 4];
+                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len];
                         }
 
                         // TODO: store frame buffer copy to rewrite it as well down below
-                        global_buffer
-                            .frame_buffer
-                            .copy_from_slice(slice::from_raw_parts(
-                                frame.0.as_ptr() as *const u8,
-                                frame.0.len() * 4,
-                            ));
+                        frame.copy_frame(&mut global_buffer.frame_buffer);
                     }
                 }
             }
