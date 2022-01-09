@@ -9,38 +9,24 @@ cargo build --release --bin mirror-guest --all-features
 ```
 Then run the mirror-guest.exe from the target/release/ directory.
 
-For improved performance you might want to run the mirror-guest with system privileges. Just open powershell as an Administrator and run:
-```bash
-PsExec -s -i -d "C:\path\to\mirror-guest.exe"
-```
-
 In case you encounter a `No such file or directory` error from the build.rs script make sure to install the [dependencies of the winres crate](https://github.com/mxre/winres#toolkit).
 
 Run the mirror tool with:
 ```bash
-RUST_SETPTRACE=1 cargo run --release --bin mirror -- -vvv --connector qemu --process mirror-guest.exe
+RUST_SETPTRACE=1 cargo run --release --bin mirror -- -vvv --connector kvm --process mirror-guest.exe
 ```
+
+It is recommended to use the [memflow-kvm](https://github.com/memflow/memflow-kvm) connector as it currently has the best performance.
 
 ## Setup
 ### With memflow inventory
 When running the mirror tool with the `default` features the memflow inventory will be used.
-Since this project depends on memflow/next it is necessary to install an appropiate connector like qemu:
-```bash
-git clone https://github.com/memflow/memflow-qemu
-cd memflow-qemu
-git checkout next
-cargo update
-./install.sh --system
+Since this project depends on memflow/next it is necessary to install [memflow-win32](https://github.com/memflow/memflow-win32) and a connector.
+The simplest method currently is to use the [memflowup](https://github.com/memflow/memflowup) tool which has an interactive installation mode:
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.memflow.io | sh
 ```
-
-The OS Plugin for win32 has to be installed as well:
-```bash
-git clone https://github.com/memflow/memflow-win32
-cd memflow-qemu
-git checkout next
-cargo update
-./install.sh --system
-```
+Then follow the on-screen-instructions.
 
 ### Without memflow inventory
 You can also specify the `memflow-static` feature when building the mirror tool.
@@ -58,6 +44,12 @@ RUST_SETPTRACE=1 cargo run --release --bin mirror --features shader-reload -- -v
 ## Demo
 
 [![mirror demo](http://img.youtube.com/vi/H-1wxAeocGA/0.jpg)](http://www.youtube.com/watch?v=H-1wxAeocGA "mirror demo")
+
+## Credits
+
+[dxgcap](https://github.com/bryal/dxgcap-rs) by [bryal](https://github.com/bryal)
+
+[obs-rs](https://github.com/not-matthias/obs-rs) by [not-matthias](https://github.com/not-matthias)
 
 ## License
 
