@@ -3,7 +3,7 @@ use std::io::Cursor;
 
 use clap::{crate_authors, crate_version, App, Arg};
 use frame_counter::FrameCounter;
-use log::{info, Level};
+use log::{error, info, Level};
 
 use memflow::prelude::v1::*;
 
@@ -83,6 +83,11 @@ fn main() {
         simplelog::ColorChoice::Auto,
     )
     .unwrap();
+
+    match thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max) {
+        Ok(_) => info!("Main thread's priority set to max"),
+        Err(_) => error!("Failed setting main thread's priority"),
+    };
 
     #[allow(unused)]
     let conn_name = matches

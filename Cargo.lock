@@ -1419,6 +1419,7 @@ dependencies = [
  "regex",
  "sdl2",
  "simplelog",
+ "thread-priority",
 ]
 
 [[package]]
