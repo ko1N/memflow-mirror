@@ -147,57 +147,37 @@ fn main() {
         */
 
         // check if the frame has been read and we need to generate a new one
-        let update_frame = unsafe {
-            if let Some(global_buffer) = &GLOBAL_BUFFER {
+        unsafe {
+            if let Some(global_buffer) = &mut GLOBAL_BUFFER {
                 let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
-                frame_read_counter == global_buffer.frame_counter
-            } else {
-                false
-            }
-        };
-
-        // detect fullscreen window once per second
-        if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
-            if let Some(window_name) = util::find_fullscreen_window() {
-                if capture.mode() != CaptureMode::OBS(window_name.clone()) {
-                    println!(
-                        "new fullscreen window detected, trying to switch to obs capture for: {}",
-                        &window_name
-                    );
-                    capture.set_mode(CaptureMode::OBS(window_name)).ok();
-                }
-            } else {
-                if capture.mode() != CaptureMode::DXGI {
-                    println!("fullscreen window closed, trying to switch to dxgi");
-                    capture.set_mode(CaptureMode::DXGI).ok();
-                }
-            }
-
-            // reset timer
-            last_capture_mode_check = Instant::now();
-        }
-
-        // update frame
-        if update_frame {
-            if let Ok(frame) = capture.capture_frame() {
-                // frame captured, put into global buffer
-                frame_counter += 1;
-
-                let frame_resolution = frame.resolution();
-                let frame_buffer_len = frame.buffer_len();
-                unsafe {
-                    if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                        if global_buffer.frame_buffer.len() != frame_buffer_len {
-                            info!("Changing resolution: {:?}", frame_resolution);
-
-                            // update frame width and height
-                            resolution = frame_resolution;
-                            std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
-                            std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
-
-                            // re-allocate buffer
-                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len];
+                if frame_read_counter == global_buffer.frame_counter {
+                    // detect fullscreen window once per second
+                    if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
+                        if let Some(window_name) = util::find_fullscreen_window() {
+                            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                                println!(
+                                "new fullscreen window detected, trying to switch to obs capture for: {}",
+                                &window_name
+                            );
+                                capture.set_mode(CaptureMode::OBS(window_name)).ok();
+                            }
+                        } else {
+                            if capture.mode() != CaptureMode::DXGI {
+                                println!("fullscreen window closed, trying to switch to dxgi");
+                                capture.set_mode(CaptureMode::DXGI).ok();
+                            }
                         }
+
+                        // reset timer
+                        last_capture_mode_check = Instant::now();
+                    }
+
+                    if let Ok(frame) = capture.capture_frame() {
+                        // frame captured, put into global buffer
+                        frame_counter += 1;
+
+                        let frame_resolution = frame.resolution();
+                        let frame_buffer_len = frame.buffer_len();
 
                         // forcefully update metadata to prevent swap-outs
                         std::ptr::write_volatile(
@@ -205,15 +185,22 @@ fn main() {
                             [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
                         );
 
-                        // TODO: store frame buffer copy to rewrite it as well down below
+                        if global_buffer.frame_buffer.len() != frame_buffer_len {
+                            info!("Changing resolution: {:?}", frame_resolution);
+
+                            // update frame width and height & re-allocate buffer
+                            resolution = frame_resolution;
+                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len];
+                        }
+
+                        std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                        std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+
                         std::ptr::write_volatile(
                             &mut global_buffer.frame_texmode,
                             frame.texture_mode(),
                         );
                         frame.copy_frame(&mut global_buffer.frame_buffer);
-
-                        std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
-                        std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
 
                         if let Ok(cursor) = cursor::get_state(x_offset) {
                             std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
