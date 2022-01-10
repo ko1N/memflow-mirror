@@ -73,7 +73,7 @@ impl Capture {
                 self.dxgi
                     .as_mut()
                     .unwrap()
-                    .capture_frame()
+                    .capture_frame::<u8>()
                     .map_err(|_| "unable to capture frame".to_string())?,
             )),
             CaptureMode::OBS(_) => Ok(Frame::OBS(
@@ -88,7 +88,7 @@ impl Capture {
 }
 
 pub enum Frame<'a> {
-    DXGI((Vec<dxgi::BGRA8>, (usize, usize))),
+    DXGI((&'a [u8], (usize, usize))),
     OBS((&'a mut [u8], (usize, usize))),
 }
 
@@ -102,7 +102,7 @@ impl<'a> Frame<'a> {
 
     pub fn buffer_len(&self) -> usize {
         match self {
-            Frame::DXGI((buffer, _)) => buffer.len() * 4,
+            Frame::DXGI((buffer, _)) => buffer.len(),
             Frame::OBS((buffer, _)) => buffer.len(),
         }
     }
@@ -119,7 +119,7 @@ impl<'a> Frame<'a> {
             Frame::DXGI((buffer, _)) => {
                 to.copy_from_slice(slice::from_raw_parts(
                     buffer.as_ptr() as *const u8,
-                    buffer.len() * 4,
+                    buffer.len(),
                 ));
             }
             Frame::OBS((buffer, _)) => {

@@ -1,7 +1,9 @@
 //#![windows_subsystem = "windows"]
 
 use std::mem::MaybeUninit;
+use std::time::{Duration, Instant};
 
+use clap::{crate_authors, crate_version, App, Arg};
 use log::{error, info, warn, LevelFilter};
 
 use std::sync::mpsc::channel;
@@ -20,6 +22,12 @@ use mirror_dto::GlobalBuffer;
 static mut GLOBAL_BUFFER: Option<GlobalBuffer> = None;
 
 fn main() {
+    // TODO: runtime option in tray + config file
+    let matches = App::new("mirror-guest")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .get_matches();
+
     let log_path = ::std::env::current_exe()
         .unwrap()
         .with_file_name("mirror-guest.log");
@@ -95,6 +103,7 @@ fn main() {
     }
 
     // main application loop
+    let mut last_capture_mode_check = Instant::now();
     let mut frame_counter = 0u32;
     let mut last_output = 0;
     let mut x_offset: i32 = 0;
@@ -147,20 +156,25 @@ fn main() {
             }
         };
 
-        // detect fullscreen window
-        if let Some(window_name) = util::find_fullscreen_window() {
-            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
-                println!(
-                    "new fullscreen window detected, trying to switch to obs capture for: {}",
-                    &window_name
-                );
-                capture.set_mode(CaptureMode::OBS(window_name)).ok();
+        // detect fullscreen window once per second
+        if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
+            if let Some(window_name) = util::find_fullscreen_window() {
+                if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                    println!(
+                        "new fullscreen window detected, trying to switch to obs capture for: {}",
+                        &window_name
+                    );
+                    capture.set_mode(CaptureMode::OBS(window_name)).ok();
+                }
+            } else {
+                if capture.mode() != CaptureMode::DXGI {
+                    println!("fullscreen window closed, trying to switch to dxgi");
+                    capture.set_mode(CaptureMode::DXGI).ok();
+                }
             }
-        } else {
-            if capture.mode() != CaptureMode::DXGI {
-                println!("fullscreen window closed, trying to switch to dxgi");
-                capture.set_mode(CaptureMode::DXGI).ok();
-            }
+
+            // reset timer
+            last_capture_mode_check = Instant::now();
         }
 
         // update frame
@@ -185,33 +199,29 @@ fn main() {
                             global_buffer.frame_buffer = vec![0u8; frame_buffer_len];
                         }
 
+                        // forcefully update metadata to prevent swap-outs
+                        std::ptr::write_volatile(
+                            &mut global_buffer.marker,
+                            [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                        );
+
                         // TODO: store frame buffer copy to rewrite it as well down below
                         std::ptr::write_volatile(
                             &mut global_buffer.frame_texmode,
                             frame.texture_mode(),
                         );
                         frame.copy_frame(&mut global_buffer.frame_buffer);
+
+                        std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                        std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+
+                        if let Ok(cursor) = cursor::get_state(x_offset) {
+                            std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                        }
+
+                        // update frame counter
+                        std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
                     }
-                }
-            }
-        }
-
-        // write metadata + cursor state in any case to prevent swap-outs on inactivity
-        if let Ok(cursor) = cursor::get_state(x_offset) {
-            unsafe {
-                if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                    // forcefully update metadata to prevent swap-outs
-                    std::ptr::write_volatile(
-                        &mut global_buffer.marker,
-                        [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
-                    );
-
-                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
-                    std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
-                    std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
-
-                    // update cursor
-                    std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
                 }
             }
         }

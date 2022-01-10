@@ -1432,6 +1432,7 @@ dependencies = [
 name = "mirror-guest"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "log",
  "log-panics",
  "mirror-dto",
