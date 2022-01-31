@@ -10,7 +10,7 @@ use memflow::prelude::v1::*;
 pub mod window;
 use window::Window;
 
-use mirror_dto::{GlobalBufferRaw, TextureMode};
+use mirror_dto::{GlobalBuffer, TextureMode};
 
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
@@ -149,14 +149,14 @@ fn main() {
     info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
     let marker_addr = module_info.base + marker_offs;
 
-    let mut global_buffer: GlobalBufferRaw = process
+    let mut global_buffer: GlobalBuffer = process
         .read(marker_addr)
         .expect("unable to read global buffer");
     info!(
         "found resolution: {}x{}",
         global_buffer.width, global_buffer.height
     );
-    info!("found frame_buffer addr: {:x}", global_buffer.frame_buffer);
+    info!("found frame_buffer addr: {:x}", global_buffer.frame_buffer.as_mut_ptr() as umem);
 
     // pre-allocate frame_buffer
     let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
@@ -221,7 +221,7 @@ fn main() {
 
             // update frame_buffer
             process
-                .read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
+                .read_into((global_buffer.frame_buffer.as_mut_ptr() as umem).into(), &mut frame_buffer[..])
                 .ok();
             global_buffer.frame_read_counter = global_buffer.frame_counter;
             process.write(marker_addr, &global_buffer).ok();
@@ -233,7 +233,7 @@ fn main() {
             );
 
             // update texture
-            texture_mode = global_buffer.frame_texmode;
+            texture_mode = unsafe { std::mem::transmute(global_buffer.frame_texmode) };
             texture.write(
                 glium::Rect {
                     left: 0,
