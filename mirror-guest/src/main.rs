@@ -153,13 +153,21 @@ fn main() {
                 if frame_read_counter == global_buffer.frame_counter {
                     if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
                         // detect fullscreen window once per second
-                        if let Some(window_name) = util::find_fullscreen_window() {
-                            if global_buffer.config.obs && capture.mode() != CaptureMode::OBS(window_name.clone()) {
-                                println!(
-                                "new fullscreen window detected, trying to switch to obs capture for: {}",
-                                &window_name
-                            );
-                                capture.set_mode(CaptureMode::OBS(window_name)).ok();
+                        if global_buffer.config.obs {
+                            if let Some(window_name) = util::find_fullscreen_window() {
+                                if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                                    println!(
+                                    "new fullscreen window detected, trying to switch to obs capture for: {}",
+                                    &window_name
+                                );
+                                    capture.set_mode(CaptureMode::OBS(window_name)).ok();
+                                }
+                            } else {
+                                if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI
+                                {
+                                    println!("fullscreen window closed, trying to switch to dxgi");
+                                    capture.set_mode(CaptureMode::DXGI).ok();
+                                }
                             }
                         } else {
                             if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
