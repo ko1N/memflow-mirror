@@ -3,7 +3,7 @@ use dxgi::DXGIManager;
 
 use std::slice;
 
-use mirror_dto::{TextureMode, CVec};
+use mirror_dto::{CVec, TextureMode};
 
 #[derive(Clone, PartialEq)]
 pub enum CaptureMode {

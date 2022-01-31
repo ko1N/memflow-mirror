@@ -151,10 +151,10 @@ fn main() {
             if let Some(global_buffer) = &mut GLOBAL_BUFFER {
                 let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
                 if frame_read_counter == global_buffer.frame_counter {
-                    // detect fullscreen window once per second
                     if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
+                        // detect fullscreen window once per second
                         if let Some(window_name) = util::find_fullscreen_window() {
-                            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                            if global_buffer.config.obs && capture.mode() != CaptureMode::OBS(window_name.clone()) {
                                 println!(
                                 "new fullscreen window detected, trying to switch to obs capture for: {}",
                                 &window_name
@@ -162,11 +162,13 @@ fn main() {
                                 capture.set_mode(CaptureMode::OBS(window_name)).ok();
                             }
                         } else {
-                            if capture.mode() != CaptureMode::DXGI {
+                            if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
                                 println!("fullscreen window closed, trying to switch to dxgi");
                                 capture.set_mode(CaptureMode::DXGI).ok();
                             }
                         }
+
+                        // TODO: update target list in config
 
                         // reset timer
                         last_capture_mode_check = Instant::now();

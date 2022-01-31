@@ -156,7 +156,10 @@ fn main() {
         "found resolution: {}x{}",
         global_buffer.width, global_buffer.height
     );
-    info!("found frame_buffer addr: {:x}", global_buffer.frame_buffer.as_mut_ptr() as umem);
+    info!(
+        "found frame_buffer addr: {:x}",
+        global_buffer.frame_buffer.as_mut_ptr() as umem
+    );
 
     // pre-allocate frame_buffer
     let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
@@ -221,7 +224,10 @@ fn main() {
 
             // update frame_buffer
             process
-                .read_into((global_buffer.frame_buffer.as_mut_ptr() as umem).into(), &mut frame_buffer[..])
+                .read_into(
+                    (global_buffer.frame_buffer.as_mut_ptr() as umem).into(),
+                    &mut frame_buffer[..],
+                )
                 .ok();
             global_buffer.frame_read_counter = global_buffer.frame_counter;
             process.write(marker_addr, &global_buffer).ok();
