@@ -190,7 +190,7 @@ fn main() {
 
                             // update frame width and height & re-allocate buffer
                             resolution = frame_resolution;
-                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len];
+                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len].into();
                         }
 
                         std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
@@ -198,7 +198,7 @@ fn main() {
 
                         std::ptr::write_volatile(
                             &mut global_buffer.frame_texmode,
-                            frame.texture_mode(),
+                            frame.texture_mode() as u8,
                         );
                         frame.copy_frame(&mut global_buffer.frame_buffer);
 

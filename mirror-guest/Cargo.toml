@@ -14,7 +14,7 @@ trayicon = "0.1.1"
 simple-logging = "2.0.2"
 log-panics = "2.0.0"
 clap = { version = "^3.0.5", features = ["cargo"] }
-obs-client = { git = "https://github.com/ko1N/obs-rs" }
+obs-client = { git = "https://github.com/ko1N/obs-rs", branch = "main" }
 
 [build-dependencies]
 winres = "0.1"

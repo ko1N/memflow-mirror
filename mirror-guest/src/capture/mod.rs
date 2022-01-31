@@ -3,7 +3,7 @@ use dxgi::DXGIManager;
 
 use std::slice;
 
-use mirror_dto::TextureMode;
+use mirror_dto::{TextureMode, CVec};
 
 #[derive(Clone, PartialEq)]
 pub enum CaptureMode {
@@ -114,7 +114,7 @@ impl<'a> Frame<'a> {
         }
     }
 
-    pub unsafe fn copy_frame(&self, to: &mut Vec<u8>) {
+    pub unsafe fn copy_frame(&self, to: &mut CVec<u8>) {
         match self {
             Frame::DXGI((buffer, _)) => {
                 to.copy_from_slice(slice::from_raw_parts(
