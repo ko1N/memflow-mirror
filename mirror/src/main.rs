@@ -55,6 +55,12 @@ fn main() {
                 .default_value("mirror-guest.exe"),
         )
         .arg(
+            Arg::new("obs")
+            .help("Enables capturing via obs.")
+                .long("obs")
+                .short('o')
+        )
+        .arg(
             Arg::new("vsync")
             .help("Enabled vertical synchronization (vsync) in the renderer.")
                 .long("vsync")
@@ -192,6 +198,7 @@ fn main() {
     let mut frame_counter = FrameCounter::new(100f64);
     let mut update_counter = FrameCounter::new(100f64);
 
+    let enable_obs = matches.is_present("obs");
     let stretch_to_window = matches.is_present("stretch");
     let mut previous_frame_counter = 0;
     loop {
@@ -229,6 +236,7 @@ fn main() {
                     &mut frame_buffer[..],
                 )
                 .ok();
+            global_buffer.config.obs = enable_obs; // TODO: more configuration
             global_buffer.frame_read_counter = global_buffer.frame_counter;
             process.write(marker_addr, &global_buffer).ok();
 
