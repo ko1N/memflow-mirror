@@ -163,19 +163,19 @@ fn main() {
         global_buffer.width, global_buffer.height
     );
     info!(
-        "found frame_buffer addr: {:x}",
-        global_buffer.frame_buffer.as_mut_ptr() as umem
+        "found address of frame0: {:x}",
+        global_buffer.frame0.buffer.as_ptr() as umem
     );
 
-    // pre-allocate frame_buffer
-    let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
+    // pre-allocate buffer for the frame being renderes
+    let mut render_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
 
     // create window
     let mut wnd = Window::new(matches.is_present("vsync"));
 
     // create frame texture
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(
-        &frame_buffer[..],
+        &render_buffer[..],
         (global_buffer.width as u32, global_buffer.height as u32),
     );
     let mut texture_mode = TextureMode::BGRA;
@@ -200,13 +200,13 @@ fn main() {
 
     let enable_obs = matches.is_present("obs");
     let stretch_to_window = matches.is_present("stretch");
-    let mut previous_frame_counter = 0;
+    let mut previous_write_frame = 0;
     loop {
         frame_counter.tick();
 
         // check if a frame buffer is necessary
         process.read_into(marker_addr, &mut global_buffer).unwrap();
-        if global_buffer.frame_counter != previous_frame_counter {
+        if global_buffer.write_frame != previous_write_frame {
             update_counter.tick();
 
             // check if resolution has been changed
@@ -219,10 +219,10 @@ fn main() {
                         "changing resolution: to {}x{}",
                         global_buffer.width, global_buffer.height
                     );
-                    frame_buffer =
+                    render_buffer =
                         vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
                     let new_image = glium::texture::RawImage2d::from_raw_rgba(
-                        frame_buffer.clone(),
+                        render_buffer.clone(),
                         (global_buffer.width as u32, global_buffer.height as u32),
                     );
                     texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
@@ -230,24 +230,29 @@ fn main() {
             }
 
             // update frame_buffer
+            let read_frame = if global_buffer.write_frame == 0 {
+                &global_buffer.frame1
+            } else {
+                &global_buffer.frame0
+            };
             process
                 .read_into(
-                    (global_buffer.frame_buffer.as_mut_ptr() as umem).into(),
-                    &mut frame_buffer[..],
+                    (read_frame.buffer.as_ptr() as umem).into(),
+                    &mut render_buffer[..],
                 )
                 .ok();
-            global_buffer.config.obs = enable_obs; // TODO: more configuration
-            global_buffer.frame_read_counter = global_buffer.frame_counter;
+            global_buffer.config.obs = enable_obs; // TODO: more configuration options
+            global_buffer.read_frame = global_buffer.write_frame;
             process.write(marker_addr, &global_buffer).ok();
 
             // update image
             let new_image = glium::texture::RawImage2d::from_raw_rgba(
-                frame_buffer.clone(),
+                render_buffer.clone(),
                 (global_buffer.width as u32, global_buffer.height as u32),
             );
 
             // update texture
-            texture_mode = unsafe { std::mem::transmute(global_buffer.frame_texmode) };
+            texture_mode = unsafe { std::mem::transmute(read_frame.texture_mode) };
             texture.write(
                 glium::Rect {
                     left: 0,
@@ -258,7 +263,7 @@ fn main() {
                 new_image,
             );
 
-            previous_frame_counter = global_buffer.frame_counter;
+            previous_write_frame = global_buffer.write_frame;
         }
 
         let mut frame = wnd.frame();

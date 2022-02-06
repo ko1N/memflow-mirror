@@ -79,15 +79,37 @@ impl Default for Cursor {
 
 #[repr(C)]
 #[derive(Clone, Debug)]
+pub struct Frame {
+    pub texture_mode: u8, // TextureMode,
+    pub buffer: CVec<u8>,
+}
+unsafe impl Pod for Frame {}
+
+impl Frame {
+    pub fn new(resolution: (usize, usize)) -> Self {
+        Self {
+            texture_mode: TextureMode::BGRA as u8, // dxgi default
+            buffer: vec![0u8; resolution.0 * resolution.1 * 4].into(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Debug)]
 pub struct GlobalBuffer {
     pub marker: [u8; 8],
     pub config: CaptureConfig,
     pub width: usize,
     pub height: usize,
-    pub frame_counter: u32,
-    pub frame_read_counter: u32,
-    pub frame_texmode: u8, // TextureMode,
-    pub frame_buffer: CVec<u8>,
+
+    /// A vec containg the frames that are currently being read and written to
+    pub frame0: Frame,
+    pub frame1: Frame,
+    /// The frame thats currently being written by the mirror-guest - flips between indizes of `frames`
+    pub write_frame: usize,
+    /// The frame thats currently being read by the mirror - flips between indizes of `frames`
+    pub read_frame: usize,
+
     pub cursor: Cursor,
     pub screen_index: usize,
 }
@@ -100,10 +122,12 @@ impl GlobalBuffer {
             config: CaptureConfig::default(),
             width: resolution.0,
             height: resolution.1,
-            frame_counter: 0,
-            frame_read_counter: 0,
-            frame_texmode: TextureMode::BGRA as u8, // dxgi default
-            frame_buffer: vec![0u8; resolution.0 * resolution.1 * 4].into(),
+
+            frame0: Frame::new(resolution),
+            frame1: Frame::new(resolution),
+            write_frame: 0,
+            read_frame: 0,
+
             cursor: Cursor::default(),
             screen_index,
         }
