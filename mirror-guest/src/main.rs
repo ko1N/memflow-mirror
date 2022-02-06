@@ -149,25 +149,16 @@ fn main() {
         // check if the frame has been read and we need to generate a new one
         unsafe {
             if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
-                if frame_read_counter == global_buffer.frame_counter {
-                    if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
-                        // detect fullscreen window once per second
-                        if global_buffer.config.obs {
-                            if let Some(window_name) = util::find_fullscreen_window() {
-                                if capture.mode() != CaptureMode::OBS(window_name.clone()) {
-                                    println!(
+                if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
+                    // detect fullscreen window once per second
+                    if global_buffer.config.obs {
+                        if let Some(window_name) = util::find_fullscreen_window() {
+                            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                                println!(
                                     "new fullscreen window detected, trying to switch to obs capture for: {}",
                                     &window_name
                                 );
-                                    capture.set_mode(CaptureMode::OBS(window_name)).ok();
-                                }
-                            } else {
-                                if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI
-                                {
-                                    println!("fullscreen window closed, trying to switch to dxgi");
-                                    capture.set_mode(CaptureMode::DXGI).ok();
-                                }
+                                capture.set_mode(CaptureMode::OBS(window_name)).ok();
                             }
                         } else {
                             if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
@@ -175,50 +166,59 @@ fn main() {
                                 capture.set_mode(CaptureMode::DXGI).ok();
                             }
                         }
-
-                        // TODO: update target list in config
-
-                        // reset timer
-                        last_capture_mode_check = Instant::now();
+                    } else {
+                        if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
+                            println!("fullscreen window closed, trying to switch to dxgi");
+                            capture.set_mode(CaptureMode::DXGI).ok();
+                        }
                     }
 
-                    if let Ok(frame) = capture.capture_frame() {
-                        // frame captured, put into global buffer
-                        frame_counter += 1;
+                    // TODO: update target list in config
 
-                        let frame_resolution = frame.resolution();
-                        let frame_buffer_len = frame.buffer_len();
+                    // reset timer
+                    last_capture_mode_check = Instant::now();
+                }
 
-                        // forcefully update metadata to prevent swap-outs
-                        std::ptr::write_volatile(
-                            &mut global_buffer.marker,
-                            [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
-                        );
+                if let Ok(frame) = capture.capture_frame() {
+                    while std::ptr::read_volatile(&global_buffer.frame_read_counter)
+                        != global_buffer.frame_counter
+                    {}
 
-                        if global_buffer.frame_buffer.len() != frame_buffer_len {
-                            info!("Changing resolution: {:?}", frame_resolution);
+                    // frame captured, put into global buffer
+                    frame_counter += 1;
 
-                            // update frame width and height & re-allocate buffer
-                            resolution = frame_resolution;
-                            global_buffer.frame_buffer = vec![0u8; frame_buffer_len].into();
-                        }
+                    let frame_resolution = frame.resolution();
+                    let frame_buffer_len = frame.buffer_len();
 
-                        std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
-                        std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+                    // forcefully update metadata to prevent swap-outs
+                    std::ptr::write_volatile(
+                        &mut global_buffer.marker,
+                        [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                    );
 
-                        std::ptr::write_volatile(
-                            &mut global_buffer.frame_texmode,
-                            frame.texture_mode() as u8,
-                        );
-                        frame.copy_frame(&mut global_buffer.frame_buffer);
+                    if global_buffer.frame_buffer.len() != frame_buffer_len {
+                        info!("Changing resolution: {:?}", frame_resolution);
 
-                        if let Ok(cursor) = cursor::get_state(x_offset) {
-                            std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
-                        }
-
-                        // update frame counter
-                        std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
+                        // update frame width and height & re-allocate buffer
+                        resolution = frame_resolution;
+                        global_buffer.frame_buffer = vec![0u8; frame_buffer_len].into();
                     }
+
+                    std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                    std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+
+                    std::ptr::write_volatile(
+                        &mut global_buffer.frame_texmode,
+                        frame.texture_mode() as u8,
+                    );
+                    frame.copy_frame(&mut global_buffer.frame_buffer);
+
+                    if let Ok(cursor) = cursor::get_state(x_offset) {
+                        std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                    }
+
+                    // update frame counter
+                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
                 }
             }
         }
