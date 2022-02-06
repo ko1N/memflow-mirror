@@ -82,6 +82,8 @@ impl Default for Cursor {
 pub struct Frame {
     pub texture_mode: u8, // TextureMode,
     pub buffer: CVec<u8>,
+    pub cursor: Cursor,
+    pub locked: u8,
 }
 unsafe impl Pod for Frame {}
 
@@ -90,6 +92,8 @@ impl Frame {
         Self {
             texture_mode: TextureMode::BGRA as u8, // dxgi default
             buffer: vec![0u8; resolution.0 * resolution.1 * 4].into(),
+            cursor: Cursor::default(),
+            locked: 0,
         }
     }
 }
@@ -102,16 +106,11 @@ pub struct GlobalBuffer {
     pub width: usize,
     pub height: usize,
 
-    /// A vec containg the frames that are currently being read and written to
+    /// The frames that are currently being read and written to
     pub frame0: Frame,
     pub frame1: Frame,
     /// The frame thats currently being written by the mirror-guest - flips between indizes of `frames`
     pub write_frame: usize,
-    /// The frame thats currently being read by the mirror - flips between indizes of `frames`
-    pub read_frame: usize,
-
-    pub cursor: Cursor,
-    pub screen_index: usize,
 }
 unsafe impl Pod for GlobalBuffer {}
 
@@ -126,10 +125,6 @@ impl GlobalBuffer {
             frame0: Frame::new(resolution),
             frame1: Frame::new(resolution),
             write_frame: 0,
-            read_frame: 0,
-
-            cursor: Cursor::default(),
-            screen_index,
         }
     }
 }
