@@ -6,4 +6,3 @@ edition = "2018"
 
 [dependencies]
 memflow = { git = "https://github.com/memflow/memflow", branch = "next" }
-cglue = { path = "../../cglue/cglue" } # TODO: TEMP
