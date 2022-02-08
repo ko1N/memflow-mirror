@@ -255,12 +255,32 @@ dependencies = [
 [[package]]
 name = "cglue"
 version = "0.2.5"
+dependencies = [
+ "cglue-macro 0.2.1",
+ "no-std-compat",
+]
+
+[[package]]
+name = "cglue"
+version = "0.2.5"
 source = "git+https://github.com/h33p/cglue?branch=main#d85d2e83bd6f5eb6331174fbdc322418031f051b"
 dependencies = [
  "abi_stable",
- "cglue-macro",
+ "cglue-macro 0.2.1 (git+https://github.com/h33p/cglue?branch=main)",
  "no-std-compat",
  "serde",
+]
+
+[[package]]
+name = "cglue-gen"
+version = "0.2.2"
+dependencies = [
+ "itertools",
+ "lazy_static",
+ "proc-macro-crate",
+ "proc-macro2 1.0.36",
+ "quote 1.0.15",
+ "syn",
 ]
 
 [[package]]
@@ -279,9 +299,19 @@ dependencies = [
 [[package]]
 name = "cglue-macro"
 version = "0.2.1"
+dependencies = [
+ "cglue-gen 0.2.2",
+ "proc-macro2 1.0.36",
+ "quote 1.0.15",
+ "syn",
+]
+
+[[package]]
+name = "cglue-macro"
+version = "0.2.1"
 source = "git+https://github.com/h33p/cglue?branch=main#d85d2e83bd6f5eb6331174fbdc322418031f051b"
 dependencies = [
- "cglue-gen",
+ "cglue-gen 0.2.2 (git+https://github.com/h33p/cglue?branch=main)",
  "proc-macro2 1.0.36",
  "quote 1.0.15",
  "syn",
@@ -1223,7 +1253,7 @@ dependencies = [
  "abi_stable",
  "bitflags",
  "bumpalo",
- "cglue",
+ "cglue 0.2.5 (git+https://github.com/h33p/cglue?branch=main)",
  "coarsetime",
  "dataview",
  "dirs 4.0.0",
@@ -1421,6 +1451,7 @@ dependencies = [
 name = "mirror-dto"
 version = "0.1.0"
 dependencies = [
+ "cglue 0.2.5",
  "memflow",
 ]
 

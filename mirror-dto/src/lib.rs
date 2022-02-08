@@ -1,4 +1,5 @@
-pub use memflow::cglue::prelude::v1::{CVec, ReprCString};
+//pub use memflow::cglue::prelude::v1::{CVec, ReprCString};
+pub use cglue::prelude::v1::{CVec, ReprCString};
 use memflow::prelude::v1::Pod;
 
 #[repr(u8)]
