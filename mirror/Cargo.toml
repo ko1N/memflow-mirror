@@ -1,13 +1,13 @@
 [package]
 name = "mirror"
-version = "0.1.0"
+version = "0.2.0-beta1"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-memflow = { git = "https://github.com/memflow/memflow", branch = "next", features = ["plugins"] }
-memflow-win32 = { git = "https://github.com/memflow/memflow-win32", branch = "main", optional = true }
-memflow-qemu = { git = "https://github.com/memflow/memflow-qemu", branch = "next", optional = true }
+memflow = { version = "^0.2.0-beta", features = ["plugins"] }
+memflow-win32 = { version = "^0.2.0-beta", optional = true }
+memflow-qemu = { version = "^0.2.0-beta", optional = true }
 mirror-dto = { path = "../mirror-dto" }
 clap = { version = "^3.0.5", features = ["cargo"] }
 simplelog = "^0.11.1"
