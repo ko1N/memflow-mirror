@@ -1,6 +1,6 @@
 [package]
 name = "mirror"
-version = "0.2.0-beta1"
+version = "0.2.0-beta5"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
