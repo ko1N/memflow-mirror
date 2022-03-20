@@ -927,9 +927,6 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "hashbrown"
@@ -1221,36 +1218,6 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "memflow"
-version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#8b45e0d840976574ba8e2fa31b9a43ee014368f9"
-dependencies = [
- "abi_stable",
- "bitflags",
- "bumpalo",
- "cglue",
- "coarsetime",
- "dataview",
- "dirs",
- "fixed-slice-vec",
- "goblin",
- "hashbrown 0.11.2",
- "itertools",
- "libloading 0.7.3",
- "log",
- "memflow-derive 0.1.5",
- "memmap",
- "no-std-compat",
- "once_cell",
- "pelite",
- "rangemap 0.1.14",
- "serde",
- "smallvec",
- "toml",
- "x86_64",
-]
-
-[[package]]
-name = "memflow"
 version = "0.2.0-beta5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a9d20b115d9fdaae988c5aa4f0aee56961e94b7e90c54d8ef536f438b610f73"
@@ -1268,28 +1235,16 @@ dependencies = [
  "itertools",
  "libloading 0.7.3",
  "log",
- "memflow-derive 0.2.0-beta2",
+ "memflow-derive",
  "memmap",
  "no-std-compat",
  "once_cell",
  "pelite",
- "rangemap 1.0.1",
+ "rangemap",
  "serde",
  "smallvec",
  "toml",
  "x86_64",
-]
-
-[[package]]
-name = "memflow-derive"
-version = "0.1.5"
-source = "git+https://github.com/memflow/memflow?branch=next#8b45e0d840976574ba8e2fa31b9a43ee014368f9"
-dependencies = [
- "darling",
- "proc-macro-crate",
- "proc-macro2 1.0.36",
- "quote 1.0.16",
- "syn",
 ]
 
 [[package]]
@@ -1315,8 +1270,8 @@ dependencies = [
  "itertools",
  "libc",
  "log",
- "memflow 0.2.0-beta5",
- "memflow-derive 0.2.0-beta2",
+ "memflow",
+ "memflow-derive",
  "procfs",
  "windows",
 ]
@@ -1328,7 +1283,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "423bafef186e98024b01fd2d729ae35a0de5cece2b4d961f5aa7d31c06676458"
 dependencies = [
  "log",
- "memflow 0.2.0-beta5",
+ "memflow",
  "memflow-native",
  "qapi",
  "scan_fmt",
@@ -1344,7 +1299,7 @@ dependencies = [
  "goblin",
  "indicatif",
  "log",
- "memflow 0.2.0-beta5",
+ "memflow",
  "no-std-compat",
  "pdb",
  "pelite",
@@ -1457,7 +1412,7 @@ dependencies = [
  "glium_text_rusttype",
  "image",
  "log",
- "memflow 0.2.0-beta5",
+ "memflow",
  "memflow-qemu",
  "memflow-win32",
  "mirror-dto",
@@ -1472,7 +1427,7 @@ dependencies = [
 name = "mirror-dto"
 version = "0.1.0"
 dependencies = [
- "memflow 0.1.5",
+ "memflow",
 ]
 
 [[package]]
@@ -1905,12 +1860,6 @@ checksum = "b4af2ec4714533fcdf07e886f17025ace8b997b9ce51204ee69b6da831c3da57"
 dependencies = [
  "proc-macro2 1.0.36",
 ]
-
-[[package]]
-name = "rangemap"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3929836cb64d09ee7deee59635c3d9bffbc1c0373e247efff6272abd62a11baa"
 
 [[package]]
 name = "rangemap"
