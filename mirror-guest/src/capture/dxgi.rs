@@ -184,6 +184,9 @@ struct DuplicatedOutput {
     device_context: ComPtr<ID3D11DeviceContext>,
     output: ComPtr<IDXGIOutput1>,
     output_duplication: ComPtr<IDXGIOutputDuplication>,
+
+    // Temporary storage so that we don't leak memory / have UB.
+    frame_surface: Option<ComPtr<IDXGISurface1>>,
 }
 impl DuplicatedOutput {
     fn get_desc(&self) -> DXGI_OUTPUT_DESC {
@@ -198,6 +201,13 @@ impl DuplicatedOutput {
         &mut self,
         timeout_ms: u32,
     ) -> Result<ComPtr<IDXGISurface1>, HRESULT> {
+        // Cleanup resources from the previous run
+        //
+        if let Some(frame_surface) = &self.frame_surface {
+            unsafe { frame_surface.Unmap() };
+            self.frame_surface = None;
+        }
+
         let frame_resource = unsafe {
             let mut frame_resource = ptr::null_mut();
             let mut frame_info = zeroed();
@@ -243,7 +253,18 @@ impl DuplicatedOutput {
             );
             self.output_duplication.ReleaseFrame();
         }
-        readable_surface.cast()
+        // TODO: cleanup on error?
+        self.frame_surface = Some(readable_surface.cast()?);
+        Ok(self.frame_surface.clone().unwrap())
+    }
+}
+
+impl Drop for DuplicatedOutput {
+    fn drop(&mut self) {
+        if let Some(frame_surface) = &self.frame_surface {
+            unsafe { frame_surface.Unmap() };
+            self.frame_surface = None;
+        }
     }
 }
 
@@ -374,6 +395,7 @@ impl DXGIManager {
                     device_context,
                     output,
                     output_duplication,
+                    frame_surface: None,
                 });
                 return Ok(());
             }
@@ -416,9 +438,9 @@ impl DXGIManager {
         }
     }
 
-    fn capture_frame_t<T: Copy + Send + Sync + Sized>(
+    pub fn capture_frame<T: Copy + Send + Sync + Sized>(
         &mut self,
-    ) -> Result<(Vec<T>, (usize, usize)), CaptureError> {
+    ) -> Result<(&[T], (usize, usize)), CaptureError> {
         let frame_surface = match self.capture_frame_to_surface() {
             Ok(surface) => surface,
             Err(e) => return Err(e),
@@ -444,7 +466,7 @@ impl DXGIManager {
             } = output_desc.DesktopCoordinates;
             ((right - left) as usize, (bottom - top) as usize)
         };
-        let mut pixel_buf = Vec::with_capacity(byte_size(output_width * output_height));
+        //let mut pixel_buf = Vec::with_capacity(byte_size(output_width * output_height));
 
         let scan_lines = match output_desc.Rotation {
             DXGI_MODE_ROTATION_ROTATE90 | DXGI_MODE_ROTATION_ROTATE270 => output_width,
@@ -455,6 +477,7 @@ impl DXGIManager {
             slice::from_raw_parts(mapped_surface.pBits as *const T, byte_stride * scan_lines)
         };
 
+        /*
         match output_desc.Rotation {
             DXGI_MODE_ROTATION_IDENTITY | DXGI_MODE_ROTATION_UNSPECIFIED => {
                 pixel_buf.extend_from_slice(mapped_pixels)
@@ -519,25 +542,8 @@ impl DXGIManager {
             },
             n => unreachable!("Undefined DXGI_MODE_ROTATION: {}", n),
         }
-        unsafe { frame_surface.Unmap() };
-        Ok((pixel_buf, (output_width, output_height)))
-    }
-
-    /// Capture a frame
-    ///
-    /// On success, return Vec with pixels and width and height of frame.
-    /// On failure, return CaptureError.
-    pub fn capture_frame(&mut self) -> Result<(Vec<BGRA8>, (usize, usize)), CaptureError> {
-        self.capture_frame_t()
-    }
-
-    /// Capture a frame
-    ///
-    /// On success, return Vec with pixel components and width and height of frame.
-    /// On failure, return CaptureError.
-    #[allow(unused)]
-    pub fn capture_frame_components(&mut self) -> Result<(Vec<u8>, (usize, usize)), CaptureError> {
-        self.capture_frame_t()
+        */
+        Ok((mapped_pixels, (output_width, output_height)))
     }
 }
 
@@ -594,31 +600,4 @@ unsafe extern "system" fn enumerate_monitors_callback(
     }
 
     TRUE
-}
-
-#[test]
-fn test() {
-    let mut manager = DXGIManager::new(300).unwrap();
-    for _ in 0..100 {
-        match manager.capture_frame() {
-            Ok((pixels, (_, _))) => {
-                let len = pixels.len() as u64;
-                let (r, g, b) = pixels.into_iter().fold((0u64, 0u64, 0u64), |(r, g, b), p| {
-                    (r + p.r as u64, g + p.g as u64, b + p.b as u64)
-                });
-                println!("avg: {} {} {}", r / len, g / len, b / len)
-            }
-            Err(e) => println!("error: {:?}", e),
-        }
-    }
-}
-
-#[test]
-fn compare_frame_dims() {
-    let mut manager = DXGIManager::new(300).unwrap();
-    let (frame, (fw, fh)) = manager.capture_frame().unwrap();
-    let (frame_u8, (fu8w, fu8h)) = manager.capture_frame_components().unwrap();
-    assert_eq!(fw, fu8w);
-    assert_eq!(fh, fu8h);
-    assert_eq!(4 * frame.len(), frame_u8.len());
 }

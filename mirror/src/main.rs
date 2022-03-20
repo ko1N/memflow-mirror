@@ -3,14 +3,14 @@ use std::io::Cursor;
 
 use clap::{crate_authors, crate_version, App, Arg};
 use frame_counter::FrameCounter;
-use log::{info, Level};
+use log::{error, info, Level};
 
 use memflow::prelude::v1::*;
 
 pub mod window;
 use window::Window;
 
-use mirror_dto::GlobalBufferRaw;
+use mirror_dto::{GlobalBuffer, TextureMode};
 
 fn find_marker(module_buf: &[u8]) -> Option<usize> {
     use ::regex::bytes::*;
@@ -55,6 +55,12 @@ fn main() {
                 .default_value("mirror-guest.exe"),
         )
         .arg(
+            Arg::new("obs")
+            .help("Enables capturing via obs.")
+                .long("obs")
+                .short('o')
+        )
+        .arg(
             Arg::new("vsync")
             .help("Enabled vertical synchronization (vsync) in the renderer.")
                 .long("vsync")
@@ -83,6 +89,11 @@ fn main() {
         simplelog::ColorChoice::Auto,
     )
     .unwrap();
+
+    match thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max) {
+        Ok(_) => info!("Main thread's priority set to max"),
+        Err(_) => error!("Failed setting main thread's priority"),
+    };
 
     #[allow(unused)]
     let conn_name = matches
@@ -144,14 +155,17 @@ fn main() {
     info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
     let marker_addr = module_info.base + marker_offs;
 
-    let mut global_buffer: GlobalBufferRaw = process
+    let mut global_buffer: GlobalBuffer = process
         .read(marker_addr)
         .expect("unable to read global buffer");
     info!(
         "found resolution: {}x{}",
         global_buffer.width, global_buffer.height
     );
-    info!("found frame_buffer addr: {:x}", global_buffer.frame_buffer);
+    info!(
+        "found frame_buffer addr: {:x}",
+        global_buffer.frame_buffer.as_mut_ptr() as umem
+    );
 
     // pre-allocate frame_buffer
     let mut frame_buffer = vec![0u8; (global_buffer.width * global_buffer.height * 4) as usize];
@@ -164,6 +178,7 @@ fn main() {
         &frame_buffer[..],
         (global_buffer.width as u32, global_buffer.height as u32),
     );
+    let mut texture_mode = TextureMode::BGRA;
     let mut texture = glium::texture::SrgbTexture2d::new(&wnd.display, image).unwrap();
 
     // create cursor texture
@@ -183,14 +198,14 @@ fn main() {
     let mut frame_counter = FrameCounter::new(100f64);
     let mut update_counter = FrameCounter::new(100f64);
 
+    let enable_obs = matches.is_present("obs");
     let stretch_to_window = matches.is_present("stretch");
     let mut previous_frame_counter = 0;
     loop {
-        frame_counter.tick();
-
         // check if a frame buffer is necessary
         process.read_into(marker_addr, &mut global_buffer).unwrap();
         if global_buffer.frame_counter != previous_frame_counter {
+            frame_counter.tick();
             update_counter.tick();
 
             // check if resolution has been changed
@@ -215,8 +230,12 @@ fn main() {
 
             // update frame_buffer
             process
-                .read_into(global_buffer.frame_buffer.into(), &mut frame_buffer[..])
+                .read_into(
+                    (global_buffer.frame_buffer.as_mut_ptr() as umem).into(),
+                    &mut frame_buffer[..],
+                )
                 .ok();
+            global_buffer.config.obs = enable_obs; // TODO: more configuration
             global_buffer.frame_read_counter = global_buffer.frame_counter;
             process.write(marker_addr, &global_buffer).ok();
 
@@ -227,6 +246,7 @@ fn main() {
             );
 
             // update texture
+            texture_mode = unsafe { std::mem::transmute(global_buffer.frame_texmode) };
             texture.write(
                 glium::Rect {
                     left: 0,
@@ -238,67 +258,75 @@ fn main() {
             );
 
             previous_frame_counter = global_buffer.frame_counter;
-        }
 
-        let mut frame = wnd.frame();
+            // draw frame
+            let mut frame = wnd.frame();
 
-        // compute rendering position
-        let window_size = frame.window.display.window().drawable_size();
-        let window_aspect = window_size.0 as f32 / window_size.1 as f32;
-        let capture_aspect = texture.width() as f32 / texture.height() as f32;
-        let (x, y, w, h) = if !stretch_to_window {
-            if window_aspect >= capture_aspect {
-                let target_width = 2.0 * capture_aspect / window_aspect;
-                (-1.0 + (2.0 - target_width) / 2.0, 1.0, target_width, -2.0)
+            // compute rendering position
+            let window_size = frame.window.display.window().drawable_size();
+            let window_aspect = window_size.0 as f32 / window_size.1 as f32;
+            let capture_aspect = texture.width() as f32 / texture.height() as f32;
+            let (x, y, w, h) = if !stretch_to_window {
+                if window_aspect >= capture_aspect {
+                    let target_width = 2.0 * capture_aspect / window_aspect;
+                    (-1.0 + (2.0 - target_width) / 2.0, 1.0, target_width, -2.0)
+                } else {
+                    let target_height = 2.0 * window_aspect / capture_aspect;
+                    (-1.0, 1.0 - (2.0 - target_height) / 2.0, 2.0, -target_height)
+                }
             } else {
-                let target_height = 2.0 * window_aspect / capture_aspect;
-                (-1.0, 1.0 - (2.0 - target_height) / 2.0, 2.0, -target_height)
+                (-1.0, 1.0, 2.0, -2.0)
+            };
+
+            // draw texture
+            frame.draw_texture(x, y, w, h, &texture, texture_mode, false);
+            let offset = 0; //1920;
+                            // draw cursor
+            if global_buffer.cursor.is_visible != 0 {
+                let scale = (
+                    w / global_buffer.width as f32,
+                    -h / global_buffer.height as f32,
+                );
+                let dimensions = (
+                    scale.0 * cursor_dimensions.0 as f32,
+                    scale.1 * cursor_dimensions.1 as f32,
+                );
+                frame.draw_texture(
+                    x + scale.0 * (global_buffer.cursor.x - offset) as f32,
+                    y - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
+                    dimensions.0,
+                    dimensions.1,
+                    &cursor_texture,
+                    TextureMode::RGBA,
+                    true,
+                );
             }
-        } else {
-            (-1.0, 1.0, 2.0, -2.0)
-        };
 
-        // draw texture
-        frame.draw_texture(x, y, w, h, &texture, false);
-        let offset = 0; //1920;
-                        // draw cursor
-        if global_buffer.cursor.is_visible != 0 {
-            let scale = (
-                w / global_buffer.width as f32,
-                -h / global_buffer.height as f32,
-            );
-            let dimensions = (
-                scale.0 * cursor_dimensions.0 as f32,
-                scale.1 * cursor_dimensions.1 as f32,
-            );
-            frame.draw_texture(
-                x + scale.0 * (global_buffer.cursor.x - offset) as f32,
-                y - scale.1 * global_buffer.cursor.y as f32 - dimensions.1,
-                dimensions.0,
-                dimensions.1,
-                &cursor_texture,
-                true,
-            );
-        }
+            // fps and ups counter
+            {
+                frame.draw_text(
+                    &format!("fps: {:.0}", frame_counter.avg_frame_rate()),
+                    [25.0, 35.0],
+                    [0.025, 0.025],
+                    [0.0, 1.0, 1.0, 1.0],
+                );
+                frame.draw_text(
+                    &format!("ups: {:.0}", update_counter.avg_frame_rate()),
+                    [25.0, 55.0],
+                    [0.025, 0.025],
+                    [0.0, 1.0, 1.0, 1.0],
+                );
+                frame.draw_text(
+                    &format!("texmode: {:?}", texture_mode),
+                    [25.0, 75.0],
+                    [0.025, 0.025],
+                    [0.0, 1.0, 1.0, 1.0],
+                );
+            }
 
-        // fps and ups counter
-        {
-            frame.draw_text(
-                &format!("fps: {:.0}", frame_counter.avg_frame_rate()),
-                [25.0, 35.0],
-                [0.025, 0.025],
-                [0.0, 1.0, 1.0, 1.0],
-            );
-            frame.draw_text(
-                &format!("ups: {:.0}", update_counter.avg_frame_rate()),
-                [25.0, 55.0],
-                [0.025, 0.025],
-                [0.0, 1.0, 1.0, 1.0],
-            );
-        }
-
-        if !frame.end() {
-            break;
+            if !frame.end() {
+                break;
+            }
         }
     }
 }

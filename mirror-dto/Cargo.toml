@@ -5,4 +5,4 @@ authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-memflow = { git = "https://github.com/memflow/memflow", branch = "next" }
+memflow = { version = "^0.2.0-beta", features = ["plugins"] }

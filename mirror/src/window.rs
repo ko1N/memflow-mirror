@@ -17,6 +17,8 @@ use glium::{
 use glium_text_rusttype as glium_text;
 use sdl2::{self, video::SwapInterval};
 
+use mirror_dto::TextureMode;
+
 #[cfg(feature = "shader-reload")]
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 
@@ -27,7 +29,8 @@ pub struct Window {
     pub text_system: glium_text::TextSystem,
     pub font: glium_text::FontTexture, // TODO: map
 
-    pub program: glium::Program, // TODO: map
+    pub program_rgba: glium::Program,
+    pub program_bgra: glium::Program,
 
     #[cfg(feature = "shader-reload")]
     _watcher: notify::INotifyWatcher,
@@ -86,19 +89,34 @@ impl Window {
 
         // setup basic shaders
         #[cfg(not(feature = "shader-reload"))]
-        let program = glium::Program::from_source(
+        let program_rgba = glium::Program::from_source(
             &display,
             &include_str!("../resources/vertex.glsl"),
-            &include_str!("../resources/fragment.glsl"),
+            &include_str!("../resources/fragment_rgba.glsl"),
+            None,
+        )
+        .unwrap();
+        #[cfg(not(feature = "shader-reload"))]
+        let program_bgra = glium::Program::from_source(
+            &display,
+            &include_str!("../resources/vertex.glsl"),
+            &include_str!("../resources/fragment_bgra.glsl"),
             None,
         )
         .unwrap();
 
         #[cfg(feature = "shader-reload")]
-        let program = load_shader_program(
+        let program_rgba = load_shader_program(
             &display,
             "mirror/resources/vertex.glsl",
-            "mirror/resources/fragment.glsl",
+            "mirror/resources/fragment_rgba.glsl",
+        )
+        .unwrap();
+        #[cfg(feature = "shader-reload")]
+        let program_bgra = load_shader_program(
+            &display,
+            "mirror/resources/vertex.glsl",
+            "mirror/resources/fragment_bgra.glsl",
         )
         .unwrap();
 
@@ -120,7 +138,8 @@ impl Window {
             text_system,
             font,
 
-            program,
+            program_rgba,
+            program_bgra,
 
             #[cfg(feature = "shader-reload")]
             _watcher: watcher,
@@ -137,11 +156,24 @@ impl Window {
                 match load_shader_program(
                     &self.display,
                     "mirror/resources/vertex.glsl",
-                    "mirror/resources/fragment.glsl",
+                    "mirror/resources/fragment_rgba.glsl",
                 ) {
                     Ok(program) => {
                         info!("shader reload successful");
-                        self.program = program;
+                        self.program_rgba = program;
+                    }
+                    Err(err) => {
+                        warn!("failed to reload shader: {}", err)
+                    }
+                }
+                match load_shader_program(
+                    &self.display,
+                    "mirror/resources/vertex.glsl",
+                    "mirror/resources/fragment_bgra.glsl",
+                ) {
+                    Ok(program) => {
+                        info!("shader reload successful");
+                        self.program_bgra = program;
                     }
                     Err(err) => {
                         warn!("failed to reload shader: {}", err)
@@ -211,6 +243,7 @@ impl<'a> WindowFrame<'a> {
         w: f32,
         h: f32,
         texture: &SrgbTexture2d,
+        texture_mode: TextureMode,
         alpha: bool,
     ) {
         #[derive(Copy, Clone)]
@@ -260,14 +293,29 @@ impl<'a> WindowFrame<'a> {
             Default::default()
         };
 
-        self.frame
-            .draw(
-                &vertex_buffer,
-                &indices,
-                &self.window.program,
-                &uniforms,
-                &params,
-            )
-            .unwrap();
+        match texture_mode {
+            TextureMode::RGBA => {
+                self.frame
+                    .draw(
+                        &vertex_buffer,
+                        &indices,
+                        &self.window.program_rgba,
+                        &uniforms,
+                        &params,
+                    )
+                    .unwrap();
+            }
+            TextureMode::BGRA => {
+                self.frame
+                    .draw(
+                        &vertex_buffer,
+                        &indices,
+                        &self.window.program_bgra,
+                        &uniforms,
+                        &params,
+                    )
+                    .unwrap();
+            }
+        }
     }
 }
