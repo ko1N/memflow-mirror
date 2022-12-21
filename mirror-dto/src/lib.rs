@@ -78,11 +78,11 @@ impl Default for Cursor {
 }
 
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GlobalBuffer {
     pub marker: [u8; 8],
     pub config: CaptureConfig,
-    pub width: usize,
+    pub width: usize, // TODO: no usize here...
     pub height: usize,
     pub frame_counter: u32,
     pub frame_read_counter: u32,
