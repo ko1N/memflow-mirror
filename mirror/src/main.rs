@@ -71,7 +71,7 @@ fn main() -> Result<()> {
     let os = inventory.builder().os_chain(chain).build()?;
 
     // create capture instance
-    let reader = CaptureReader::new(os);
+    let reader = CaptureReader::new(os, false);
 
     // start ui
     //tracing_subscriber::fmt::init();

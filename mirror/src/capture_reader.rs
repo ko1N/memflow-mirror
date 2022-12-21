@@ -7,48 +7,71 @@ use ::std::{
     thread::JoinHandle,
 };
 use frame_counter::FrameCounter;
-use mirror_dto::{GlobalBuffer, TextureMode};
+use mirror_dto::{GlobalBufferHost, TextureMode};
 use parking_lot::RwLock;
 
 use ::memflow::prelude::v1::*;
 
 pub struct CaptureReader {
+    os: OsInstanceArcBox<'static>,
+
     thread_handle: Option<JoinHandle<()>>,
     thread_alive: Arc<AtomicBool>,
+    inner: Option<CaptureReaderInner>,
 
     // synced with main thread
     capture_data: Arc<RwLock<CaptureData>>,
 }
 
 impl CaptureReader {
-    pub fn new(os: OsInstanceArcBox<'static>) -> Self {
+    pub fn new(os: OsInstanceArcBox<'static>, threading: bool) -> Self {
         let capture_data = Arc::new(RwLock::new(CaptureData::default()));
-        let mut inner = CaptureReaderInner::new(os, capture_data.clone());
+        let mut inner = CaptureReaderInner::new(os.clone(), capture_data.clone());
 
         let mut reader = Self {
+            os,
+
             thread_handle: None,
             thread_alive: Arc::new(AtomicBool::new(true)),
+            inner: None,
 
             capture_data,
         };
 
-        let alive = reader.thread_alive.clone();
-        reader.thread_handle = Some(thread::spawn(move || {
-            info!("processing thread created",);
+        if threading {
+            let alive = reader.thread_alive.clone();
+            reader.thread_handle = Some(thread::spawn(move || {
+                info!("processing thread created",);
 
-            // run node processing
-            while alive.load(Ordering::SeqCst) {
-                // TODO: run process function
-                inner.process();
-            }
+                // run node processing
+                while alive.load(Ordering::SeqCst) {
+                    // TODO: run process function
+                    inner.process();
+                }
 
-            info!("processing thread destroyed",);
-        }));
+                info!("processing thread destroyed",);
+            }));
+        } else {
+            reader.inner = Some(inner);
+        }
 
         reader
     }
 
-    pub fn image_data(&self) -> egui::ImageData {
+    pub fn multithreading(&self) -> bool {
+        self.inner.is_none()
+    }
+
+    // Consumes self and returns the underlying os object
+    pub fn os(&self) -> OsInstanceArcBox<'static> {
+        self.os.clone()
+    }
+
+    pub fn image_data(&mut self) -> egui::ImageData {
+        if let Some(inner) = &mut self.inner {
+            inner.process();
+        }
+
         let (frame_width, frame_height, frame_buffer) = {
             let capture_data = self.capture_data.read();
             (
@@ -74,15 +97,17 @@ impl CaptureReader {
 
 impl Drop for CaptureReader {
     fn drop(&mut self) {
-        self.thread_alive.store(false, Ordering::SeqCst);
-        if self
-            .thread_handle
-            .take()
-            .expect("Called stop on non-running thread")
-            .join()
-            .is_err()
-        {
-            warn!("Could not join thread for worker node");
+        if self.thread_handle.is_some() {
+            self.thread_alive.store(false, Ordering::SeqCst);
+            if self
+                .thread_handle
+                .take()
+                .expect("Called stop on non-running thread")
+                .join()
+                .is_err()
+            {
+                warn!("Could not join thread for worker node");
+            }
         }
     }
 }
@@ -125,7 +150,7 @@ impl CaptureReaderInner {
 }
 
 struct CaptureData {
-    global_buffer: GlobalBuffer,
+    global_buffer: GlobalBufferHost,
     frame_buffer: Vec<u8>,
 }
 
@@ -133,7 +158,7 @@ impl Default for CaptureData {
     fn default() -> Self {
         // pre-allocate buffer with a common resolution
         Self {
-            global_buffer: GlobalBuffer::new((1920, 1080), 0),
+            global_buffer: GlobalBufferHost::new((1920, 1080), 0),
             frame_buffer: vec![0u8; 1920 * 1080 * 4],
         }
     }
@@ -190,7 +215,7 @@ impl CaptureProcess {
             );
             info!(
                 "found frame_buffer addr: {:x}",
-                capture_data.global_buffer.frame_buffer.as_ptr() as umem
+                capture_data.global_buffer.frame_buffer as umem
             );
 
             (
@@ -266,7 +291,7 @@ impl CaptureProcess {
             let mut capture_data = self.capture_data.write();
             self.process
                 .read_into(
-                    (capture_data.global_buffer.frame_buffer.as_mut_ptr() as umem).into(),
+                    (capture_data.global_buffer.frame_buffer as umem).into(),
                     &mut capture_data.frame_buffer[..],
                 )
                 .ok();
