@@ -13,7 +13,7 @@ In case you encounter a `No such file or directory` error from the build.rs scri
 
 Run the mirror tool with:
 ```bash
-RUST_SETPTRACE=1 cargo run --release --bin mirror -- -vvv --connector kvm --process mirror-guest.exe
+cargo run --release --bin mirror --all-features -- -vv --connector kvm --os win32
 ```
 
 It is recommended to use the [memflow-kvm](https://github.com/memflow/memflow-kvm) connector as it currently has the best performance.
@@ -27,19 +27,6 @@ The simplest method currently is to use the [memflowup](https://github.com/memfl
 curl --proto '=https' --tlsv1.2 -sSf https://sh.memflow.io | sh
 ```
 Then follow the on-screen-instructions.
-
-### Without memflow inventory
-You can also specify the `memflow-static` feature when building the mirror tool.
-This will statically link [memflow-win32](https://github.com/memflow/memflow-win32) as well as [memflow-qemu](https://github.com/memflow/memflow-qemu/tree/next) into the resulting binary. Just run the mirror tool with:
-```bash
-RUST_SETPTRACE=1 cargo run --release --bin mirror --features memflow-static -- -vvv --connector qemu --process mirror-guest.exe
-```
-
-### Development
-For development purposes you can enable the `shader-reload` feature which uses the [notify](https://github.com/notify-rs/notify) crate to hot reload shaders. To run the tool with this feature enabled just do:
-```bash
-RUST_SETPTRACE=1 cargo run --release --bin mirror --features shader-reload -- -vvv --connector qemu --process mirror-guest.exe
-```
 
 ## Demo
 

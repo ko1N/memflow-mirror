@@ -1,5 +1,5 @@
 use clap::{crate_authors, crate_version, Arg, ArgAction, Command};
-use log::Level;
+use log::{warn, Level};
 
 use memflow::prelude::v1::Result;
 use memflow::prelude::v1::*;
@@ -48,6 +48,12 @@ fn main() -> Result<()> {
     .unwrap();
 
     // TODO: via UI :)
+    if !thread_priority::ThreadPriority::Max
+        .set_for_current()
+        .is_ok()
+    {
+        warn!("Unable to increase thread priority");
+    }
 
     // parse args
     let conn_iter = matches
