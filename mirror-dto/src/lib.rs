@@ -113,9 +113,9 @@ impl GlobalBufferGuest {
     pub fn new(resolution: (u64, u64), screen_index: u32) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
-            config: CaptureConfig::default(),
             width: resolution.0,
             height: resolution.1,
+            config: CaptureConfig::default(),
             frame_counter: 0,
             frame_read_counter: 0,
             frame_texmode: TextureMode::BGRA as u8, // dxgi default
@@ -130,9 +130,9 @@ impl GlobalBufferHost {
     pub fn new(resolution: (u64, u64), screen_index: u32) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
-            config: CaptureConfig::default(),
             width: resolution.0,
             height: resolution.1,
+            config: CaptureConfig::default(),
             frame_counter: 0,
             frame_read_counter: 0,
             frame_texmode: TextureMode::BGRA as u8, // dxgi default
