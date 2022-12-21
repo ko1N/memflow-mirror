@@ -7,71 +7,174 @@ use ::std::{
     thread::JoinHandle,
 };
 use frame_counter::FrameCounter;
-use mirror_dto::{GlobalBufferHost, TextureMode};
+use mirror_dto::{CaptureConfig, GlobalBufferHost};
 use parking_lot::RwLock;
 
 use ::memflow::prelude::v1::*;
 
-pub struct CaptureReader {
+const DEFAULT_FRAME_WIDTH: u64 = 1920;
+const DEFAULT_FRAME_HEIGHT: u64 = 1080;
+
+pub trait Capture {
+    // Is this a multithreaded reader?
+    fn multithreading(&self) -> bool;
+
+    // Consumes self and returns the underlying os object
+    fn os(&self) -> OsInstanceArcBox<'static>;
+
+    fn obs_capture(&self) -> bool;
+    fn set_obs_capture(&mut self, obs: bool);
+
+    // Returns a new egui::ImageData from the captured data
+    fn image_data(&mut self) -> egui::ImageData;
+}
+
+pub struct SequentialCapture {
+    os: OsInstanceArcBox<'static>,
+
+    process: Option<CaptureProcess>,
+    capture_config: CaptureConfig,
+    capture_data: CaptureData,
+    update_counter: FrameCounter,
+}
+
+impl SequentialCapture {
+    pub fn new(os: OsInstanceArcBox<'static>) -> Self {
+        Self {
+            os,
+
+            process: None,
+            capture_config: CaptureConfig::default(),
+            capture_data: CaptureData::default(),
+            update_counter: FrameCounter::new(0f64),
+        }
+    }
+
+    fn process(&mut self) {
+        if let Some(process) = &mut self.process {
+            if process.is_alive() {
+                if process
+                    .update_into(&self.capture_config, &mut self.capture_data)
+                    .is_ok()
+                {
+                    self.update_counter.tick();
+                }
+            } else {
+                self.process = None;
+            }
+        } else {
+            // try to open the process
+            if let Ok(capture_process) = CaptureProcess::new(self.os.clone(), "mirror-guest.exe") {
+                self.process = Some(capture_process);
+            }
+        }
+    }
+}
+
+impl Capture for SequentialCapture {
+    fn multithreading(&self) -> bool {
+        false
+    }
+
+    // Consumes self and returns the underlying os object
+    fn os(&self) -> OsInstanceArcBox<'static> {
+        self.os.clone()
+    }
+
+    fn obs_capture(&self) -> bool {
+        self.capture_config.obs
+    }
+    fn set_obs_capture(&mut self, obs: bool) {
+        self.capture_config.obs = obs;
+    }
+
+    fn image_data(&mut self) -> egui::ImageData {
+        self.process();
+
+        let (frame_width, frame_height, frame_buffer) = {
+            (
+                self.capture_data.global_buffer.width,
+                self.capture_data.global_buffer.height,
+                self.capture_data.frame_buffer.clone(),
+            )
+        };
+
+        let size = [frame_width as usize, frame_height as usize];
+        let mut data = std::mem::ManuallyDrop::new(frame_buffer);
+        let pixels: Vec<egui::Color32> = unsafe {
+            Vec::from_raw_parts(
+                data.as_mut_ptr() as *mut _,
+                data.len() / std::mem::size_of::<egui::Color32>(),
+                data.len() / std::mem::size_of::<egui::Color32>(),
+            )
+        };
+
+        egui::ImageData::Color(egui::ColorImage { size, pixels })
+    }
+}
+
+pub struct ThreadedCapture {
     os: OsInstanceArcBox<'static>,
 
     thread_handle: Option<JoinHandle<()>>,
     thread_alive: Arc<AtomicBool>,
-    inner: Option<CaptureReaderInner>,
 
     // synced with main thread
+    capture_config: Arc<RwLock<CaptureConfig>>,
     capture_data: Arc<RwLock<CaptureData>>,
 }
 
-impl CaptureReader {
-    pub fn new(os: OsInstanceArcBox<'static>, threading: bool) -> Self {
+impl ThreadedCapture {
+    pub fn new(os: OsInstanceArcBox<'static>) -> Self {
+        let capture_config = Arc::new(RwLock::new(CaptureConfig::default()));
         let capture_data = Arc::new(RwLock::new(CaptureData::default()));
-        let mut inner = CaptureReaderInner::new(os.clone(), capture_data.clone());
+        let mut inner =
+            ThreadedCaptureInner::new(os.clone(), capture_config.clone(), capture_data.clone());
 
         let mut reader = Self {
             os,
 
             thread_handle: None,
             thread_alive: Arc::new(AtomicBool::new(true)),
-            inner: None,
 
+            capture_config,
             capture_data,
         };
 
-        if threading {
-            let alive = reader.thread_alive.clone();
-            reader.thread_handle = Some(thread::spawn(move || {
-                info!("processing thread created",);
+        let alive = reader.thread_alive.clone();
+        reader.thread_handle = Some(thread::spawn(move || {
+            info!("processing thread created",);
 
-                // run node processing
-                while alive.load(Ordering::SeqCst) {
-                    // TODO: run process function
-                    inner.process();
-                }
+            // run node processing
+            while alive.load(Ordering::SeqCst) {
+                // TODO: run process function
+                inner.process();
+            }
 
-                info!("processing thread destroyed",);
-            }));
-        } else {
-            reader.inner = Some(inner);
-        }
+            info!("processing thread destroyed",);
+        }));
 
         reader
     }
+}
 
-    pub fn multithreading(&self) -> bool {
-        self.inner.is_none()
+impl Capture for ThreadedCapture {
+    fn multithreading(&self) -> bool {
+        true
     }
 
-    // Consumes self and returns the underlying os object
-    pub fn os(&self) -> OsInstanceArcBox<'static> {
+    fn os(&self) -> OsInstanceArcBox<'static> {
         self.os.clone()
     }
 
-    pub fn image_data(&mut self) -> egui::ImageData {
-        if let Some(inner) = &mut self.inner {
-            inner.process();
-        }
+    fn obs_capture(&self) -> bool {
+        self.capture_config.read().obs
+    }
+    fn set_obs_capture(&mut self, obs: bool) {
+        self.capture_config.write().obs = obs;
+    }
 
+    fn image_data(&mut self) -> egui::ImageData {
         let (frame_width, frame_height, frame_buffer) = {
             let capture_data = self.capture_data.read();
             (
@@ -95,7 +198,7 @@ impl CaptureReader {
     }
 }
 
-impl Drop for CaptureReader {
+impl Drop for ThreadedCapture {
     fn drop(&mut self) {
         if self.thread_handle.is_some() {
             self.thread_alive.store(false, Ordering::SeqCst);
@@ -112,18 +215,24 @@ impl Drop for CaptureReader {
     }
 }
 
-struct CaptureReaderInner {
+struct ThreadedCaptureInner {
     os: OsInstanceArcBox<'static>,
     process: Option<CaptureProcess>,
+    capture_config: Arc<RwLock<CaptureConfig>>,
     capture_data: Arc<RwLock<CaptureData>>,
     update_counter: FrameCounter,
 }
 
-impl CaptureReaderInner {
-    pub fn new(os: OsInstanceArcBox<'static>, capture_data: Arc<RwLock<CaptureData>>) -> Self {
+impl ThreadedCaptureInner {
+    pub fn new(
+        os: OsInstanceArcBox<'static>,
+        capture_config: Arc<RwLock<CaptureConfig>>,
+        capture_data: Arc<RwLock<CaptureData>>,
+    ) -> Self {
         Self {
             os,
             process: None,
+            capture_config,
             capture_data,
             update_counter: FrameCounter::new(0f64),
         }
@@ -131,16 +240,19 @@ impl CaptureReaderInner {
 
     pub fn process(&mut self) -> () {
         if let Some(process) = &mut self.process {
-            if process.update().is_ok() {
-                self.update_counter.tick();
+            if process.is_alive() {
+                if process
+                    .update_into(&self.capture_config.read(), &mut self.capture_data.write())
+                    .is_ok()
+                {
+                    self.update_counter.tick();
+                }
+            } else {
+                self.process = None;
             }
         } else {
             // try to open the process
-            if let Ok(capture_process) = CaptureProcess::new(
-                self.os.clone(),
-                "mirror-guest.exe",
-                self.capture_data.clone(),
-            ) {
+            if let Ok(capture_process) = CaptureProcess::new(self.os.clone(), "mirror-guest.exe") {
                 self.process = Some(capture_process);
             } else {
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -158,8 +270,11 @@ impl Default for CaptureData {
     fn default() -> Self {
         // pre-allocate buffer with a common resolution
         Self {
-            global_buffer: GlobalBufferHost::new((1920, 1080), 0),
-            frame_buffer: vec![0u8; 1920 * 1080 * 4],
+            global_buffer: GlobalBufferHost::new((DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT), 0),
+            frame_buffer: vec![
+                0u8;
+                DEFAULT_FRAME_WIDTH as usize * DEFAULT_FRAME_HEIGHT as usize * 4
+            ],
         }
     }
 }
@@ -168,8 +283,6 @@ struct CaptureProcess {
     process: IntoProcessInstanceArcBox<'static>,
     marker_addr: Address,
 
-    capture_data: Arc<RwLock<CaptureData>>,
-
     // internal
     frame_width: u32,
     frame_height: u32,
@@ -177,11 +290,7 @@ struct CaptureProcess {
 }
 
 impl CaptureProcess {
-    pub fn new(
-        mut os: OsInstanceArcBox<'static>,
-        process_name: &str,
-        capture_data: Arc<RwLock<CaptureData>>,
-    ) -> Result<Self> {
+    pub fn new(mut os: OsInstanceArcBox<'static>, process_name: &str) -> Result<Self> {
         let mut processes = vec![];
         let callback = &mut |data: ProcessInfo| {
             if data.name.as_ref() == process_name {
@@ -229,34 +338,12 @@ impl CaptureProcess {
             info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
             let marker_addr = module_info.base + marker_offs;
 
-            // read global_buffer object from guest
-            let (frame_width, frame_height) = {
-                let mut capture_data = capture_data.write();
-                process.read_into(marker_addr, &mut capture_data.global_buffer)?;
-
-                info!(
-                    "found resolution: {}x{}",
-                    capture_data.global_buffer.width, capture_data.global_buffer.height
-                );
-                info!(
-                    "found frame_buffer addr: {:x}",
-                    capture_data.global_buffer.frame_buffer as umem
-                );
-
-                (
-                    capture_data.global_buffer.width as u32,
-                    capture_data.global_buffer.height as u32,
-                )
-            };
-
             return Ok(Self {
                 process,
                 marker_addr,
 
-                capture_data,
-
-                frame_width,
-                frame_height,
+                frame_width: 0,
+                frame_height: 0,
                 frame_counter: 0,
             });
         }
@@ -282,18 +369,21 @@ impl CaptureProcess {
         Ok(buf_offs as usize)
     }
 
-    pub fn update(&mut self) -> Result<()> {
-        // check if a frame buffer is necessary
-        let (frame_width, frame_height, frame_counter) = {
-            let mut capture_data = self.capture_data.write();
-            self.process
-                .read_into(self.marker_addr, &mut capture_data.global_buffer)?;
-            (
-                capture_data.global_buffer.width as u32,
-                capture_data.global_buffer.height as u32,
-                capture_data.global_buffer.frame_counter,
-            )
-        };
+    pub fn is_alive(&mut self) -> bool {
+        self.process.state() == ProcessState::Alive
+    }
+
+    pub fn update_into(
+        &mut self,
+        capture_config: &CaptureConfig,
+        capture_data: &mut CaptureData,
+    ) -> Result<()> {
+        // check if a new buffer is necessary
+        self.process
+            .read_into(self.marker_addr, &mut capture_data.global_buffer)?;
+        let frame_width = capture_data.global_buffer.width as u32;
+        let frame_height = capture_data.global_buffer.height as u32;
+        let frame_counter = capture_data.global_buffer.frame_counter;
 
         if frame_counter == self.frame_counter {
             // no new update yet
@@ -305,32 +395,26 @@ impl CaptureProcess {
             // limit to 16k resolution
             if frame_width <= 15360 && frame_height <= 8640 {
                 info!("changing resolution: to {}x{}", frame_width, frame_height);
-                {
-                    let mut capture_data = self.capture_data.write();
-                    capture_data.frame_buffer =
-                        vec![0u8; (frame_width * frame_height * 4) as usize];
-                }
+                capture_data.frame_buffer = vec![0u8; (frame_width * frame_height * 4) as usize];
+                self.frame_width = frame_width;
+                self.frame_height = frame_height;
             }
         }
 
-        {
-            // update frame_buffer on host
-            let mut capture_data = self.capture_data.write();
-            self.process
-                .read_into(
-                    (capture_data.global_buffer.frame_buffer as umem).into(),
-                    &mut capture_data.frame_buffer[..],
-                )
-                .ok();
+        // update frame_buffer on host
+        self.process
+            .read_into(
+                (capture_data.global_buffer.frame_buffer as umem).into(),
+                &mut capture_data.frame_buffer[..],
+            )
+            .ok();
 
-            // update configuration on guest
-            capture_data.global_buffer.config.obs = true; // TODO: enable_obs; // TODO: more configuration
-            capture_data.global_buffer.frame_read_counter =
-                capture_data.global_buffer.frame_counter;
-            self.process
-                .write(self.marker_addr, &capture_data.global_buffer)
-                .ok();
-        }
+        // update configuration on guest
+        capture_data.global_buffer.config = capture_config.clone();
+        capture_data.global_buffer.frame_read_counter = capture_data.global_buffer.frame_counter;
+        self.process
+            .write(self.marker_addr, &capture_data.global_buffer)
+            .ok();
 
         self.frame_counter = frame_counter;
 

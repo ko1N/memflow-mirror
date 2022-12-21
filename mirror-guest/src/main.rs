@@ -175,7 +175,7 @@ fn main() {
                 };
                 if captured_frame.is_ok() && update_frame {
                     let frame = captured_frame.unwrap();
-                    
+
                     // frame captured, put into global buffer
                     frame_counter += 1;
 

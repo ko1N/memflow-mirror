@@ -8,7 +8,7 @@ mod app;
 pub use app::MirrorApp;
 
 mod capture_reader;
-pub use capture_reader::CaptureReader;
+pub use capture_reader::SequentialCapture;
 
 fn main() -> Result<()> {
     let matches = Command::new("memflow-mirror")
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
     let os = inventory.builder().os_chain(chain).build()?;
 
     // create capture instance
-    let reader = CaptureReader::new(os, false);
+    let reader = Box::new(SequentialCapture::new(os));
 
     // start ui
     //tracing_subscriber::fmt::init();

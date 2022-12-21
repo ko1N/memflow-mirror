@@ -12,13 +12,14 @@ use frame_history::FrameHistory;
 
 use memflow::prelude::v1::*;
 
-use crate::CaptureReader;
+use crate::capture_reader::{Capture, ThreadedCapture};
+use crate::SequentialCapture;
 
 pub struct MirrorApp {
     toasts: Toasts,
     frame_history: FrameHistory,
 
-    reader: CaptureReader,
+    capture: Box<dyn Capture>,
 
     texture: Option<TextureHandle>,
 
@@ -27,7 +28,7 @@ pub struct MirrorApp {
 }
 
 impl MirrorApp {
-    pub fn new(_: &eframe::CreationContext<'_>, reader: CaptureReader) -> Self {
+    pub fn new(_: &eframe::CreationContext<'_>, capture: Box<dyn Capture>) -> Self {
         // This is also where you can customized the look at feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
@@ -35,7 +36,7 @@ impl MirrorApp {
             toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
             frame_history: FrameHistory::default(),
 
-            reader,
+            capture,
 
             texture: None,
 
@@ -77,7 +78,7 @@ impl eframe::App for MirrorApp {
 
             ui.vertical_centered(|ui| {
                 // TODO: check if new frame?
-                let frame = self.reader.image_data();
+                let frame = self.capture.image_data();
 
                 let aspect_ratio = frame.width() as f32 / frame.height() as f32;
                 let desired_height = ui.available_height();
@@ -120,21 +121,34 @@ impl eframe::App for MirrorApp {
                 .collapsible(false)
                 .open(&mut window_settings)
                 .show(ctx, |ui| {
-                    let mut multithreading = self.reader.multithreading();
-                    ui.checkbox(&mut multithreading, "Multithreading");
-                    if multithreading != self.reader.multithreading() {
-                        let os = self.reader.os();
-                        self.reader = CaptureReader::new(os, multithreading);
+                    let mut multithreading = self.capture.multithreading();
+                    if ui.checkbox(&mut multithreading, "Multithreading").changed() {
+                        let os = self.capture.os();
+
+                        // backup configuration
+                        let enable_obs = self.capture.obs_capture();
+
+                        // re-create capture
+                        if multithreading {
+                            self.capture = Box::new(ThreadedCapture::new(os));
+                        } else {
+                            self.capture = Box::new(SequentialCapture::new(os));
+                        }
+
+                        // reapply configuration
+                        self.capture.set_obs_capture(enable_obs);
                     }
 
-                    let mut enable_dxgi = true;
-                    ui.checkbox(&mut enable_dxgi, "Enable DXGI Capture (if available)");
-
-                    let mut enable_obs = true;
-                    ui.checkbox(
-                        &mut enable_obs,
-                        "Enable OBS Capture (when a Fullscreen App is running)",
-                    );
+                    let mut enable_obs = self.capture.obs_capture();
+                    if ui
+                        .checkbox(
+                            &mut enable_obs,
+                            "Enable OBS Capture (when a Fullscreen App is running)",
+                        )
+                        .changed()
+                    {
+                        self.capture.set_obs_capture(enable_obs);
+                    };
                 });
             self.window_settings = window_settings;
         }
