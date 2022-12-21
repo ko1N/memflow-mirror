@@ -1,27 +1,24 @@
-use std::io::Write;
-use std::{fs::File, time::Duration};
+use ::std::io::Cursor;
 
-use epaint::TextureHandle;
-use log::{error, info};
+use epaint::{Color32, Rect, TextureHandle};
 
-use egui::{pos2, ScrollArea};
+use egui::pos2;
 use egui_notify::Toasts;
 
 mod frame_history;
 use frame_history::FrameHistory;
 
-use memflow::prelude::v1::*;
-
 use crate::capture_reader::{Capture, ThreadedCapture};
 use crate::SequentialCapture;
 
 pub struct MirrorApp {
-    toasts: Toasts,
+    _toasts: Toasts,
     frame_history: FrameHistory,
 
     capture: Box<dyn Capture>,
 
     texture: Option<TextureHandle>,
+    cursor: Option<TextureHandle>,
 
     window_stats: bool,
     window_settings: bool,
@@ -33,12 +30,13 @@ impl MirrorApp {
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
         Self {
-            toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
+            _toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
             frame_history: FrameHistory::default(),
 
             capture,
 
             texture: None,
+            cursor: None,
 
             window_stats: false,
             window_settings: false,
@@ -94,11 +92,42 @@ impl eframe::App for MirrorApp {
                     ));
                 }
 
-                if let Some(texture) = &self.texture {
-                    ui.add(egui::Image::new(
-                        texture.id(),
-                        [desired_width, desired_height],
-                    ));
+                let texture_render_position = if let Some(texture) = &self.texture {
+                    let render_position = ui
+                        .add(egui::Image::new(
+                            texture.id(),
+                            [desired_width, desired_height],
+                        ))
+                        .rect;
+
+                    Some((texture.size(), render_position))
+                } else {
+                    None
+                };
+
+                if let Some((texture_size, render_position)) = texture_render_position {
+                    // load cursor
+                    let cursor_data = self.capture.cursor_data();
+                    if cursor_data.is_visible != 0 {
+                        let cursor = self.cursor_texture(ui);
+
+                        let (x, y, w, h) = {
+                            let scale_x = desired_width / texture_size[0] as f32;
+                            let scale_y = desired_height / texture_size[1] as f32;
+                            (
+                                render_position.left() + cursor_data.x as f32 * scale_x,
+                                render_position.top() + cursor_data.y as f32 * scale_y,
+                                cursor.size()[0] as f32 * scale_x,
+                                cursor.size()[1] as f32 * scale_y,
+                            )
+                        };
+                        ui.painter().image(
+                            cursor.id(),
+                            Rect::from_min_max(pos2(x, y), pos2(x + w, y + h)),
+                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                            Color32::WHITE,
+                        );
+                    }
                 }
             });
         });
@@ -154,5 +183,24 @@ impl eframe::App for MirrorApp {
         }
 
         ctx.request_repaint();
+    }
+}
+
+impl MirrorApp {
+    fn cursor_texture<'a>(&mut self, ui: &'a mut egui::Ui) -> &egui::TextureHandle {
+        self.cursor.get_or_insert_with(|| {
+            // Load the texture only once.
+            let image = image::load(
+                Cursor::new(&include_bytes!("../resources/cursor.png")[..]),
+                image::ImageFormat::Png,
+            )
+            .unwrap();
+            let size = [image.width() as _, image.height() as _];
+            let image_buffer = image.to_rgba8();
+            let pixels = image_buffer.as_flat_samples();
+            let cursor_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+            ui.ctx()
+                .load_texture("cursor", cursor_image, Default::default())
+        })
     }
 }

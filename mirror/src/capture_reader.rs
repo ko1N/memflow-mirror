@@ -7,7 +7,7 @@ use ::std::{
     thread::JoinHandle,
 };
 use frame_counter::FrameCounter;
-use mirror_dto::{CaptureConfig, GlobalBufferHost};
+use mirror_dto::{CaptureConfig, Cursor, GlobalBufferHost};
 use parking_lot::RwLock;
 
 use ::memflow::prelude::v1::*;
@@ -27,6 +27,9 @@ pub trait Capture {
 
     // Returns a new egui::ImageData from the captured data
     fn image_data(&mut self) -> egui::ImageData;
+
+    // Returns a copy of the current cursor state
+    fn cursor_data(&self) -> Cursor;
 }
 
 pub struct SequentialCapture {
@@ -110,6 +113,10 @@ impl Capture for SequentialCapture {
         };
 
         egui::ImageData::Color(egui::ColorImage { size, pixels })
+    }
+
+    fn cursor_data(&self) -> Cursor {
+        self.capture_data.global_buffer.cursor
     }
 }
 
@@ -195,6 +202,10 @@ impl Capture for ThreadedCapture {
         };
 
         egui::ImageData::Color(egui::ColorImage { size, pixels })
+    }
+
+    fn cursor_data(&self) -> Cursor {
+        self.capture_data.read().global_buffer.cursor
     }
 }
 

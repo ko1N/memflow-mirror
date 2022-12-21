@@ -1,8 +1,8 @@
 use clap::{crate_authors, crate_version, Arg, ArgAction, Command};
 use log::Level;
 
+use memflow::prelude::v1::Result;
 use memflow::prelude::v1::*;
-use memflow::prelude::v1::{ErrorKind, Result};
 
 mod app;
 pub use app::MirrorApp;
