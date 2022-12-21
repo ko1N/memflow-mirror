@@ -17,7 +17,7 @@ pub struct MirrorApp {
 
     capture: Box<dyn Capture>,
 
-    texture: Option<TextureHandle>,
+    texture: Option<(u32, TextureHandle)>,
     cursor: Option<TextureHandle>,
 
     window_stats: bool,
@@ -75,24 +75,28 @@ impl eframe::App for MirrorApp {
             egui::warn_if_debug_build(ui);
 
             ui.vertical_centered(|ui| {
-                // TODO: check if new frame?
+                // TODO: potentially wrong in async mode
+                let frame_counter = self.capture.frame_counter();
                 let frame = self.capture.image_data();
 
                 let aspect_ratio = frame.width() as f32 / frame.height() as f32;
                 let desired_height = ui.available_height();
                 let desired_width = desired_height * aspect_ratio;
 
-                if let Some(texture) = &mut self.texture {
-                    texture.set(frame, egui::TextureOptions::LINEAR);
+                if let Some((last_frame_counter, texture)) = &mut self.texture {
+                    if frame_counter != *last_frame_counter {
+                        texture.set(frame, egui::TextureOptions::LINEAR);
+                        *last_frame_counter = frame_counter;
+                    }
                 } else {
-                    self.texture = Some(ui.ctx().load_texture(
-                        "frame",
-                        frame,
-                        egui::TextureOptions::LINEAR,
+                    self.texture = Some((
+                        frame_counter,
+                        ui.ctx()
+                            .load_texture("frame", frame, egui::TextureOptions::LINEAR),
                     ));
                 }
 
-                let texture_render_position = if let Some(texture) = &self.texture {
+                let texture_render_position = if let Some((_, texture)) = &self.texture {
                     let render_position = ui
                         .add(egui::Image::new(
                             texture.id(),
@@ -151,7 +155,10 @@ impl eframe::App for MirrorApp {
                 .open(&mut window_settings)
                 .show(ctx, |ui| {
                     let mut multithreading = self.capture.multithreading();
-                    if ui.checkbox(&mut multithreading, "Multithreading").changed() {
+                    if ui
+                        .checkbox(&mut multithreading, "Multithreaded Capture")
+                        .changed()
+                    {
                         let os = self.capture.os();
 
                         // backup configuration

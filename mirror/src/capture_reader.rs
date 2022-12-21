@@ -25,6 +25,8 @@ pub trait Capture {
     fn obs_capture(&self) -> bool;
     fn set_obs_capture(&mut self, obs: bool);
 
+    fn frame_counter(&self) -> u32;
+
     // Returns a new egui::ImageData from the captured data
     fn image_data(&mut self) -> egui::ImageData;
 
@@ -89,6 +91,10 @@ impl Capture for SequentialCapture {
     }
     fn set_obs_capture(&mut self, obs: bool) {
         self.capture_config.obs = obs;
+    }
+
+    fn frame_counter(&self) -> u32 {
+        self.capture_data.global_buffer.frame_counter
     }
 
     fn image_data(&mut self) -> egui::ImageData {
@@ -179,6 +185,10 @@ impl Capture for ThreadedCapture {
     }
     fn set_obs_capture(&mut self, obs: bool) {
         self.capture_config.write().obs = obs;
+    }
+
+    fn frame_counter(&self) -> u32 {
+        self.capture_data.read().global_buffer.frame_counter
     }
 
     fn image_data(&mut self) -> egui::ImageData {

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export __GL_SYNC_TO_VBLANK=0
+
 if [[ ! -z $RUST_SUDO ]]; then
 
     exec sudo -E $@
