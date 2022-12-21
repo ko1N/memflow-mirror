@@ -3,7 +3,6 @@
 use std::mem::MaybeUninit;
 use std::time::{Duration, Instant};
 
-use clap::{crate_authors, crate_version, App, Arg};
 use log::{error, info, warn, LevelFilter};
 
 use std::sync::mpsc::channel;
@@ -23,24 +22,12 @@ static mut GLOBAL_BUFFER: Option<GlobalBuffer> = None;
 
 fn main() {
     // TODO: runtime option in tray + config file
-    let matches = App::new("mirror-guest")
-        .version(crate_version!())
-        .author(crate_authors!())
-        .get_matches();
-
     let log_path = ::std::env::current_exe()
         .unwrap()
         .with_file_name("mirror-guest.log");
 
     // setup logging
     let log_filter = LevelFilter::Trace;
-    /*match simple_logging::log_to_file(&log_path, log_filter) {
-        Ok(_) => info!("logging initialized with level {:?}", log_filter),
-        Err(err) => {
-            panic!("unable to initialize logging: {}", err);
-        }
-    }
-    */
     simple_logging::log_to(std::io::stdout(), log_filter);
 
     log_panics::init();
@@ -179,11 +166,16 @@ fn main() {
                     last_capture_mode_check = Instant::now();
                 }
 
-                if let Ok(frame) = capture.capture_frame() {
-                    while std::ptr::read_volatile(&global_buffer.frame_read_counter)
-                        != global_buffer.frame_counter
-                    {}
-
+                // generate new frame first then check if we can update it
+                let captured_frame = capture.capture_frame();
+                let update_frame = {
+                    let frame_read_counter =
+                        std::ptr::read_volatile(&global_buffer.frame_read_counter);
+                    frame_read_counter == global_buffer.frame_counter
+                };
+                if captured_frame.is_ok() && update_frame {
+                    let frame = captured_frame.unwrap();
+                    
                     // frame captured, put into global buffer
                     frame_counter += 1;
 
@@ -206,7 +198,6 @@ fn main() {
 
                     std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
                     std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
-
                     std::ptr::write_volatile(
                         &mut global_buffer.frame_texmode,
                         frame.texture_mode() as u8,
@@ -218,6 +209,21 @@ fn main() {
                     }
 
                     // update frame counter
+                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
+                } else {
+                    // forcefully update metadata to prevent swap-outs
+                    std::ptr::write_volatile(
+                        &mut global_buffer.marker,
+                        [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                    );
+
+                    std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                    std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+
+                    if let Ok(cursor) = cursor::get_state(x_offset) {
+                        std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                    }
+
                     std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
                 }
             }
