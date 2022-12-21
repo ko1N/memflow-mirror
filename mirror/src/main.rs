@@ -52,7 +52,7 @@ fn main() -> Result<()> {
         .set_for_current()
         .is_ok()
     {
-        warn!("Unable to increase thread priority");
+        warn!("Unable to set main thread's priority");
     }
 
     // parse args

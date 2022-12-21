@@ -57,8 +57,8 @@ pub fn raise_process_priority() {
     }
 
     match thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max) {
-        Ok(_) => info!("Main thread's priority set to max"),
-        Err(_) => error!("Failed setting main thread's priority"),
+        Ok(_) => info!("Main thread priority set to Max"),
+        Err(_) => error!("Unable to set main thread priority"),
     };
 }
 
