@@ -49,7 +49,7 @@ impl CaptureReader {
     }
 
     pub fn image_data(&self) -> egui::ImageData {
-        let (frame_width, frame_height, mut frame_buffer) = {
+        let (frame_width, frame_height, frame_buffer) = {
             let capture_data = self.capture_data.read();
             (
                 capture_data.global_buffer.width,
@@ -258,13 +258,6 @@ impl CaptureProcess {
                     capture_data.frame_buffer =
                         vec![0u8; (frame_width * frame_height * 4) as usize];
                 }
-                /*
-                let new_image = glium::texture::RawImage2d::from_raw_rgba(
-                    self.frame_buffer.clone(),
-                    (self.global_buffer.width as u32, self.global_buffer.height as u32),
-                );
-                self.texture = glium::texture::SrgbTexture2d::new(&wnd.display, new_image).unwrap();
-                */
             }
         }
 
@@ -279,7 +272,7 @@ impl CaptureProcess {
                 .ok();
 
             // update configuration on guest
-            capture_data.global_buffer.config.obs = false; // TODO: enable_obs; // TODO: more configuration
+            capture_data.global_buffer.config.obs = true; // TODO: enable_obs; // TODO: more configuration
             capture_data.global_buffer.frame_read_counter =
                 capture_data.global_buffer.frame_counter;
             self.process
@@ -287,29 +280,8 @@ impl CaptureProcess {
                 .ok();
         }
 
-        // update image
-        /*
-        let new_image = glium::texture::RawImage2d::from_raw_rgba(
-            self.frame_buffer.clone(),
-            (self.global_buffer.width as u32, self.global_buffer.height as u32),
-        );
-        */
-
-        // update texture
-        /*
-        self.texture.write(
-            glium::Rect {
-                left: 0,
-                bottom: 0,
-                width: global_buffer.width as u32,
-                height: global_buffer.height as u32,
-            },
-            new_image,
-        );
-        */
-
         self.frame_counter = frame_counter;
 
-        Ok(()) // TODO:
+        Ok(())
     }
 }
