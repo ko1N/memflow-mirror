@@ -34,7 +34,7 @@ impl Default for CaptureConfig {
         Self {
             gdi: true,
             dxgi: true,
-            obs: true,
+            obs: false,
             //targets: Vec::new().into(),
 
             //current_target: 0,
@@ -91,7 +91,7 @@ pub struct GlobalBufferGuest {
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GlobalBufferHost {
     pub marker: [u8; 8],
     pub width: u64,
