@@ -36,9 +36,9 @@ impl Capture {
         })
     }
 
-    pub fn resolution(&self) -> (usize, usize) {
+    pub fn resolution(&self) -> (u64, u64) {
         // TODO: update resolution
-        self.resolution
+        (self.resolution.0 as u64, self.resolution.1 as u64)
     }
 
     pub fn mode(&self) -> CaptureMode {
@@ -93,10 +93,10 @@ pub enum Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    pub fn resolution(&self) -> (usize, usize) {
+    pub fn resolution(&self) -> (u64, u64) {
         match self {
-            Frame::DXGI((_, resolution)) => *resolution,
-            Frame::OBS((_, resolution)) => *resolution,
+            Frame::DXGI((_, resolution)) => (resolution.0 as u64, resolution.1 as u64),
+            Frame::OBS((_, resolution)) => (resolution.0 as u64, resolution.1 as u64),
         }
     }
 

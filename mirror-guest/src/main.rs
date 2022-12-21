@@ -16,9 +16,9 @@ mod cursor;
 
 mod util;
 
-use mirror_dto::GlobalBuffer;
+use mirror_dto::GlobalBufferGuest;
 
-static mut GLOBAL_BUFFER: Option<GlobalBuffer> = None;
+static mut GLOBAL_BUFFER: Option<GlobalBufferGuest> = None;
 
 fn main() {
     // TODO: runtime option in tray + config file
@@ -86,7 +86,7 @@ fn main() {
     let mut resolution = capture.resolution();
     info!("resolution: {:?}", resolution);
     unsafe {
-        GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution, screen_index));
+        GLOBAL_BUFFER = Some(GlobalBufferGuest::new(resolution, screen_index));
     }
 
     // main application loop
