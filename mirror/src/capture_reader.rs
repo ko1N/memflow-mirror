@@ -166,7 +166,6 @@ impl Default for CaptureData {
 
 struct CaptureProcess {
     process: IntoProcessInstanceArcBox<'static>,
-    module_info: ModuleInfo,
     marker_addr: Address,
 
     capture_data: Arc<RwLock<CaptureData>>,
@@ -179,62 +178,90 @@ struct CaptureProcess {
 
 impl CaptureProcess {
     pub fn new(
-        os: OsInstanceArcBox<'static>,
+        mut os: OsInstanceArcBox<'static>,
         process_name: &str,
         capture_data: Arc<RwLock<CaptureData>>,
     ) -> Result<Self> {
-        let mut process = os
-            .into_process_by_name(process_name)
-            .map_err(|e| e.log_error("unable to find memflow mirror guest process"))?;
-        info!("found process: {:?}", process.info());
-
-        let module_info = process
-            .module_by_name(process_name)
-            .map_err(|e| e.log_error("unable to find memflow mirror guest module in process"))?;
-        info!("found module: {:?}", module_info);
-
-        // read entire module for sigscanning
-        let module_buf = process
-            .read_raw(module_info.base, module_info.size.try_into().unwrap())
-            .data_part()
-            .map_err(|e| e.log_error("unable to read module"))?;
-
-        let marker_offs = Self::find_marker(&module_buf)
-            .map_err(|e| e.log_error("unable to find marker in binary"))?;
-        info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
-        let marker_addr = module_info.base + marker_offs;
-
-        // read global_buffer object from guest
-        let (frame_width, frame_height) = {
-            let mut capture_data = capture_data.write();
-            process.read_into(marker_addr, &mut capture_data.global_buffer)?;
-
-            info!(
-                "found resolution: {}x{}",
-                capture_data.global_buffer.width, capture_data.global_buffer.height
-            );
-            info!(
-                "found frame_buffer addr: {:x}",
-                capture_data.global_buffer.frame_buffer as umem
-            );
-
-            (
-                capture_data.global_buffer.width as u32,
-                capture_data.global_buffer.height as u32,
-            )
+        let mut processes = vec![];
+        let callback = &mut |data: ProcessInfo| {
+            if data.name.as_ref() == process_name {
+                processes.push(data);
+            }
+            true
         };
+        os.process_info_list_callback(callback.into())?;
 
-        Ok(Self {
-            process,
-            module_info,
-            marker_addr,
+        for process_info in processes.iter() {
+            let mut process = match os.clone().into_process_by_info(process_info.clone()) {
+                Ok(process) => process,
+                Err(_) => continue,
+            };
+            info!("found process: {:?}", process_info);
 
-            capture_data,
+            let module_info = match process.module_by_name(process_name) {
+                Ok(module_info) => module_info,
+                Err(err) => {
+                    err.log_error("unable to find memflow mirror guest module in process");
+                    continue;
+                }
+            };
+            info!("found module: {:?}", module_info);
 
-            frame_width,
-            frame_height,
-            frame_counter: 0,
-        })
+            // read entire module for sigscanning
+            let module_buf = match process
+                .read_raw(module_info.base, module_info.size.try_into().unwrap())
+                .data_part()
+            {
+                Ok(module_buf) => module_buf,
+                Err(err) => {
+                    err.log_error("unable to read module");
+                    continue;
+                }
+            };
+
+            let marker_offs = match Self::find_marker(&module_buf) {
+                Ok(marker_offs) => marker_offs,
+                Err(err) => {
+                    err.log_error("unable to find marker in binary");
+                    continue;
+                }
+            };
+            info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
+            let marker_addr = module_info.base + marker_offs;
+
+            // read global_buffer object from guest
+            let (frame_width, frame_height) = {
+                let mut capture_data = capture_data.write();
+                process.read_into(marker_addr, &mut capture_data.global_buffer)?;
+
+                info!(
+                    "found resolution: {}x{}",
+                    capture_data.global_buffer.width, capture_data.global_buffer.height
+                );
+                info!(
+                    "found frame_buffer addr: {:x}",
+                    capture_data.global_buffer.frame_buffer as umem
+                );
+
+                (
+                    capture_data.global_buffer.width as u32,
+                    capture_data.global_buffer.height as u32,
+                )
+            };
+
+            return Ok(Self {
+                process,
+                marker_addr,
+
+                capture_data,
+
+                frame_width,
+                frame_height,
+                frame_counter: 0,
+            });
+        }
+
+        Err(Error(ErrorOrigin::OsLayer, ErrorKind::NotFound))
     }
 
     fn find_marker(module_buf: &[u8]) -> Result<usize> {

@@ -22,12 +22,11 @@ pub struct CaptureConfig {
     pub gdi: bool,
     pub dxgi: bool,
     pub obs: bool,
+    // a list of all potential capture targets
+    //pub targets: CVec<CaptureTarget>,
 
-    /// a list of all potential capture targets
-    pub targets: CVec<CaptureTarget>,
-
-    /// the currenly selected capture target
-    pub current_target: usize,
+    // the currenly selected capture target
+    //pub current_target: usize,
 }
 
 impl Default for CaptureConfig {
@@ -36,10 +35,9 @@ impl Default for CaptureConfig {
             gdi: true,
             dxgi: true,
             obs: true,
+            //targets: Vec::new().into(),
 
-            targets: Vec::new().into(),
-
-            current_target: 0,
+            //current_target: 0,
         }
     }
 }
@@ -81,9 +79,9 @@ impl Default for Cursor {
 #[derive(Debug)]
 pub struct GlobalBufferGuest {
     pub marker: [u8; 8],
+    pub width: u64,
+    pub height: u64,
     pub config: CaptureConfig,
-    pub width: u32,
-    pub height: u32,
     pub frame_counter: u32,
     pub frame_read_counter: u32,
     pub frame_texmode: u8, // TextureMode,
@@ -96,9 +94,9 @@ pub struct GlobalBufferGuest {
 #[derive(Debug)]
 pub struct GlobalBufferHost {
     pub marker: [u8; 8],
+    pub width: u64,
+    pub height: u64,
     pub config: CaptureConfig,
-    pub width: u32,
-    pub height: u32,
     pub frame_counter: u32,
     pub frame_read_counter: u32,
     pub frame_texmode: u8, // TextureMode,
@@ -112,7 +110,7 @@ const _: [(); std::mem::size_of::<GlobalBufferGuest>()] =
     [(); std::mem::size_of::<GlobalBufferHost>()];
 
 impl GlobalBufferGuest {
-    pub fn new(resolution: (u32, u32), screen_index: u32) -> Self {
+    pub fn new(resolution: (u64, u64), screen_index: u32) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
             config: CaptureConfig::default(),
@@ -129,7 +127,7 @@ impl GlobalBufferGuest {
 }
 
 impl GlobalBufferHost {
-    pub fn new(resolution: (u32, u32), screen_index: u32) -> Self {
+    pub fn new(resolution: (u64, u64), screen_index: u32) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
             config: CaptureConfig::default(),
