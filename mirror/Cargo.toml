@@ -5,14 +5,24 @@ authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-memflow = { version = "^0.2.0-beta", features = ["plugins"] }
+clap = { version = "^4.0", features = ["cargo"] }
+simplelog = "^0.12"
+log = "^0.4"
+parking_lot = { version = "0.12", features = [ "hardware-lock-elision" ] }
+
+# memflow
+memflow = { version = "^0.2.0-beta9", features = ["plugins"] }
 memflow-win32 = { version = "^0.2.0-beta", optional = true }
 memflow-qemu = { version = "^0.2.0-beta", optional = true }
 mirror-dto = { path = "../mirror-dto" }
-clap = { version = "^3.0.5", features = ["cargo"] }
-simplelog = "^0.11.1"
-thread-priority = "^0.4"
-log = "^0.4.14"
+
+# gui
+egui = "0.20.0"
+eframe = "0.20.0"
+epaint = "0.20.0"
+egui-notify = "0.5.0"
+
+thread-priority = "^0.10"
 regex = "^1.5" # TODO: replace with pattern-scanner lib
 
 # renderer

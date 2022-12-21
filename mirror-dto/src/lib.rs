@@ -78,23 +78,41 @@ impl Default for Cursor {
 }
 
 #[repr(C)]
-#[derive(Clone, Debug)]
-pub struct GlobalBuffer {
+#[derive(Debug)]
+pub struct GlobalBufferGuest {
     pub marker: [u8; 8],
     pub config: CaptureConfig,
-    pub width: usize,
-    pub height: usize,
+    pub width: u32,
+    pub height: u32,
     pub frame_counter: u32,
     pub frame_read_counter: u32,
     pub frame_texmode: u8, // TextureMode,
     pub frame_buffer: CVec<u8>,
     pub cursor: Cursor,
-    pub screen_index: usize,
+    pub screen_index: u32,
 }
-unsafe impl Pod for GlobalBuffer {}
 
-impl GlobalBuffer {
-    pub fn new(resolution: (usize, usize), screen_index: usize) -> Self {
+#[repr(C)]
+#[derive(Debug)]
+pub struct GlobalBufferHost {
+    pub marker: [u8; 8],
+    pub config: CaptureConfig,
+    pub width: u32,
+    pub height: u32,
+    pub frame_counter: u32,
+    pub frame_read_counter: u32,
+    pub frame_texmode: u8, // TextureMode,
+    pub frame_buffer: u64,
+    pub frame_buffer_pad: [u8; 32], // padding due to internal layout of CVec<T>
+    pub cursor: Cursor,
+    pub screen_index: u32,
+}
+unsafe impl Pod for GlobalBufferHost {}
+const _: [(); std::mem::size_of::<GlobalBufferGuest>()] =
+    [(); std::mem::size_of::<GlobalBufferHost>()];
+
+impl GlobalBufferGuest {
+    pub fn new(resolution: (u32, u32), screen_index: u32) -> Self {
         Self {
             marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
             config: CaptureConfig::default(),
@@ -103,7 +121,25 @@ impl GlobalBuffer {
             frame_counter: 0,
             frame_read_counter: 0,
             frame_texmode: TextureMode::BGRA as u8, // dxgi default
-            frame_buffer: vec![0u8; resolution.0 * resolution.1 * 4].into(),
+            frame_buffer: vec![0u8; resolution.0 as usize * resolution.1 as usize * 4].into(),
+            cursor: Cursor::default(),
+            screen_index,
+        }
+    }
+}
+
+impl GlobalBufferHost {
+    pub fn new(resolution: (u32, u32), screen_index: u32) -> Self {
+        Self {
+            marker: [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+            config: CaptureConfig::default(),
+            width: resolution.0,
+            height: resolution.1,
+            frame_counter: 0,
+            frame_read_counter: 0,
+            frame_texmode: TextureMode::BGRA as u8, // dxgi default
+            frame_buffer: 0,
+            frame_buffer_pad: [0u8; 32],
             cursor: Cursor::default(),
             screen_index,
         }
