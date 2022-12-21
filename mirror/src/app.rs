@@ -17,7 +17,8 @@ pub struct MirrorApp {
 
     capture: Box<dyn Capture>,
 
-    texture: Option<(u32, TextureHandle)>,
+    frame_counter: u32,
+    frame_texture: Option<TextureHandle>,
     cursor: Option<TextureHandle>,
 
     window_stats: bool,
@@ -35,7 +36,8 @@ impl MirrorApp {
 
             capture,
 
-            texture: None,
+            frame_counter: 0,
+            frame_texture: None,
             cursor: None,
 
             window_stats: false,
@@ -75,42 +77,42 @@ impl eframe::App for MirrorApp {
             egui::warn_if_debug_build(ui);
 
             ui.vertical_centered(|ui| {
-                // TODO: potentially wrong in async mode
+                // update internal state, then read frame_counter and image_data
+                self.capture.update();
+
                 let frame_counter = self.capture.frame_counter();
-                let frame = self.capture.image_data();
 
-                let aspect_ratio = frame.width() as f32 / frame.height() as f32;
-                let desired_height = ui.available_height();
-                let desired_width = desired_height * aspect_ratio;
+                // only update frame_texture on demand
+                if frame_counter != self.frame_counter {
+                    let frame = self.capture.image_data();
+                    self.frame_counter = frame_counter;
 
-                if let Some((last_frame_counter, texture)) = &mut self.texture {
-                    if frame_counter != *last_frame_counter {
-                        texture.set(frame, egui::TextureOptions::LINEAR);
-                        *last_frame_counter = frame_counter;
+                    if let Some(frame_texture) = &mut self.frame_texture {
+                        frame_texture.set(frame, egui::TextureOptions::LINEAR);
+                    } else {
+                        self.frame_texture = Some(ui.ctx().load_texture(
+                            "frame",
+                            frame,
+                            egui::TextureOptions::LINEAR,
+                        ));
                     }
-                } else {
-                    self.texture = Some((
-                        frame_counter,
-                        ui.ctx()
-                            .load_texture("frame", frame, egui::TextureOptions::LINEAR),
-                    ));
                 }
 
-                let texture_render_position = if let Some((_, texture)) = &self.texture {
+                // render frame_texture
+                if let Some(frame_texture) = &self.frame_texture {
+                    let texture_size = frame_texture.size();
+                    let aspect_ratio = texture_size[0] as f32 / texture_size[1] as f32;
+                    let desired_height = ui.available_height();
+                    let desired_width = desired_height * aspect_ratio;
+
                     let render_position = ui
                         .add(egui::Image::new(
-                            texture.id(),
+                            frame_texture.id(),
                             [desired_width, desired_height],
                         ))
                         .rect;
 
-                    Some((texture.size(), render_position))
-                } else {
-                    None
-                };
-
-                if let Some((texture_size, render_position)) = texture_render_position {
-                    // load cursor
+                    // render cursor on top of frame
                     let cursor_data = self.capture.cursor_data();
                     if cursor_data.is_visible != 0 {
                         let cursor = self.cursor_texture(ui);

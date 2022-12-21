@@ -47,14 +47,14 @@ fn main() -> Result<()> {
     )
     .unwrap();
 
-    // TODO: via UI :)
-    if !thread_priority::ThreadPriority::Max
+    if thread_priority::ThreadPriority::Max
         .set_for_current()
-        .is_ok()
+        .is_err()
     {
-        warn!("Unable to set main thread's priority");
+        warn!("Unable to set main thread priority");
     }
 
+    // TODO: configuration via ui
     // parse args
     let conn_iter = matches
         .indices_of("connector")

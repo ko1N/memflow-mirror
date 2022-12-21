@@ -25,10 +25,12 @@ pub trait Capture {
     fn obs_capture(&self) -> bool;
     fn set_obs_capture(&mut self, obs: bool);
 
+    fn update(&mut self);
+
     fn frame_counter(&self) -> u32;
 
     // Returns a new egui::ImageData from the captured data
-    fn image_data(&mut self) -> egui::ImageData;
+    fn image_data(&self) -> egui::ImageData;
 
     // Returns a copy of the current cursor state
     fn cursor_data(&self) -> Cursor;
@@ -54,26 +56,6 @@ impl SequentialCapture {
             update_counter: FrameCounter::new(0f64),
         }
     }
-
-    fn process(&mut self) {
-        if let Some(process) = &mut self.process {
-            if process.is_alive() {
-                if process
-                    .update_into(&self.capture_config, &mut self.capture_data)
-                    .is_ok()
-                {
-                    self.update_counter.tick();
-                }
-            } else {
-                self.process = None;
-            }
-        } else {
-            // try to open the process
-            if let Ok(capture_process) = CaptureProcess::new(self.os.clone(), "mirror-guest.exe") {
-                self.process = Some(capture_process);
-            }
-        }
-    }
 }
 
 impl Capture for SequentialCapture {
@@ -93,13 +75,31 @@ impl Capture for SequentialCapture {
         self.capture_config.obs = obs;
     }
 
+    fn update(&mut self) {
+        if let Some(process) = &mut self.process {
+            if process.is_alive() {
+                if process
+                    .update_into(&self.capture_config, &mut self.capture_data)
+                    .is_ok()
+                {
+                    self.update_counter.tick();
+                }
+            } else {
+                self.process = None;
+            }
+        } else {
+            // try to open the process
+            if let Ok(capture_process) = CaptureProcess::new(self.os.clone(), "mirror-guest.exe") {
+                self.process = Some(capture_process);
+            }
+        }
+    }
+
     fn frame_counter(&self) -> u32 {
         self.capture_data.global_buffer.frame_counter
     }
 
-    fn image_data(&mut self) -> egui::ImageData {
-        self.process();
-
+    fn image_data(&self) -> egui::ImageData {
         let (frame_width, frame_height, frame_buffer) = {
             (
                 self.capture_data.global_buffer.width,
@@ -158,10 +158,9 @@ impl ThreadedCapture {
         reader.thread_handle = Some(thread::spawn(move || {
             info!("processing thread created",);
 
-            // run node processing
+            // run processing
             while alive.load(Ordering::SeqCst) {
-                // TODO: run process function
-                inner.process();
+                inner.update();
             }
 
             info!("processing thread destroyed",);
@@ -187,11 +186,13 @@ impl Capture for ThreadedCapture {
         self.capture_config.write().obs = obs;
     }
 
+    fn update(&mut self) {}
+
     fn frame_counter(&self) -> u32 {
         self.capture_data.read().global_buffer.frame_counter
     }
 
-    fn image_data(&mut self) -> egui::ImageData {
+    fn image_data(&self) -> egui::ImageData {
         let (frame_width, frame_height, frame_buffer) = {
             let capture_data = self.capture_data.read();
             (
@@ -259,7 +260,7 @@ impl ThreadedCaptureInner {
         }
     }
 
-    pub fn process(&mut self) -> () {
+    pub fn update(&mut self) {
         if let Some(process) = &mut self.process {
             if process.is_alive() {
                 if process
@@ -384,10 +385,10 @@ impl CaptureProcess {
         let buf_offs = re
             .find_iter(module_buf)
             .next()
-            .ok_or_else(|| Error(ErrorOrigin::VirtualMemory, ErrorKind::NotFound))?
+            .ok_or(Error(ErrorOrigin::VirtualMemory, ErrorKind::NotFound))?
             .start();
 
-        Ok(buf_offs as usize)
+        Ok(buf_offs)
     }
 
     pub fn is_alive(&mut self) -> bool {
@@ -412,7 +413,7 @@ impl CaptureProcess {
         }
 
         // check if resolution has been changed
-        if self.frame_width != frame_width as u32 || self.frame_height != frame_height as u32 {
+        if self.frame_width != frame_width || self.frame_height != frame_height {
             // limit to 16k resolution
             if frame_width <= 15360 && frame_height <= 8640 {
                 info!("changing resolution: to {}x{}", frame_width, frame_height);
