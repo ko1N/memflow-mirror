@@ -1,20 +1,17 @@
-use std::ffi::CString;
-use std::ffi::OsString;
-use std::os::windows::ffi::OsStringExt;
-use std::ptr;
-use std::slice;
+use ::std::{
+    ffi::{CString, OsString},
+    os::windows::ffi::OsStringExt,
+};
 
-use log::{error, info, warn};
+use ::log::{error, info};
 
-use winapi::shared::windef::RECT;
-use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
-use winapi::um::processthreadsapi::GetCurrentProcess;
-use winapi::um::processthreadsapi::SetPriorityClass;
-use winapi::um::shellapi::{SHQueryUserNotificationState, QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN};
-use winapi::um::winbase::REALTIME_PRIORITY_CLASS;
-use winapi::um::winnt::HANDLE;
-use winapi::um::winuser::{
-    GetDesktopWindow, GetForegroundWindow, GetShellWindow, GetWindowRect, GetWindowTextW,
+use ::winapi::um::{
+    libloaderapi::{GetModuleHandleA, GetProcAddress},
+    processthreadsapi::{GetCurrentProcess, SetPriorityClass},
+    shellapi::{SHQueryUserNotificationState, QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN},
+    winbase::REALTIME_PRIORITY_CLASS,
+    winnt::HANDLE,
+    winuser::{GetForegroundWindow, GetWindowTextW},
 };
 
 pub fn raise_gpu_priority() {

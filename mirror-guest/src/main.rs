@@ -1,13 +1,16 @@
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
-use std::mem::MaybeUninit;
-use std::time::{Duration, Instant};
+use ::std::{
+    mem::MaybeUninit,
+    time::{Duration, Instant},
+};
 
-use log::{error, info, warn, LevelFilter};
+use ::log::{info, LevelFilter};
 
-use std::sync::mpsc::channel;
-use trayicon::{MenuBuilder, TrayIconBuilder};
-use winapi::um::winuser;
+use ::trayicon::{MenuBuilder, TrayIconBuilder};
+use ::winapi::um::winuser;
+
+use ::mirror_dto::GlobalBufferGuest;
 
 mod capture;
 use capture::{Capture, CaptureMode};
@@ -16,66 +19,38 @@ mod cursor;
 
 mod util;
 
-use mirror_dto::GlobalBufferGuest;
-
 static mut GLOBAL_BUFFER: Option<GlobalBufferGuest> = None;
 
 fn main() {
-    // TODO: runtime option in tray + config file
+    // setup logging
+    let log_filter = LevelFilter::Trace;
     let log_path = ::std::env::current_exe()
         .unwrap()
         .with_file_name("mirror-guest.log");
-
-    // setup logging
-    let log_filter = LevelFilter::Trace;
-    simple_logging::log_to(std::io::stdout(), log_filter);
+    simple_logging::log_to_file(log_path, log_filter).unwrap();
 
     log_panics::init();
 
     // create tray icon
-    /*
     #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     enum Events {
-        NextScreen,
         Exit,
     }
     let (send, recv) = std::sync::mpsc::channel::<Events>();
-    let change_screen_menu = MenuBuilder::new().item("Next Screen", Events::NextScreen);
     let _tray_icon = TrayIconBuilder::new()
         .sender(send)
         .icon_from_buffer(include_bytes!("../resources/icon.ico"))
         .tooltip("memflow mirror guest agent")
-        .menu(
-            MenuBuilder::new()
-                .submenu("Change Screen", change_screen_menu)
-                .item("E&xit", Events::Exit),
-        )
+        .menu(MenuBuilder::new().item("E&xit", Events::Exit))
         .build()
         .expect("unable to create tray icon");
-        */
-    let mut screen_index = 0;
-    let (tx_screen_num, rx_screen_num) = channel();
-    /*
-    let (tx_reset_screen_num, rx_reset_screen_num) = channel();
-
     std::thread::spawn(move || {
         recv.iter().for_each(|m| match m {
-            Events::NextScreen => {
-                let should_reset_idx = rx_reset_screen_num.try_recv().unwrap_or(false);
-                if should_reset_idx {
-                    screen_index = 0;
-                }
-                screen_index += 1;
-                tx_screen_num
-                    .send(screen_index)
-                    .expect("could not send on channel");
-            }
             Events::Exit => {
                 std::process::exit(0);
             }
         })
     });
-    */
 
     util::raise_gpu_priority();
 
@@ -86,14 +61,12 @@ fn main() {
     let mut resolution = capture.resolution();
     info!("resolution: {:?}", resolution);
     unsafe {
-        GLOBAL_BUFFER = Some(GlobalBufferGuest::new(resolution, screen_index));
+        GLOBAL_BUFFER = Some(GlobalBufferGuest::new(resolution, 0));
     }
 
     // main application loop
     let mut last_capture_mode_check = Instant::now();
     let mut frame_counter = 0u32;
-    let mut last_output = 0;
-    let mut x_offset: i32 = 0;
     loop {
         // tray icon loop
         unsafe {
@@ -104,34 +77,6 @@ fn main() {
                 winuser::DispatchMessageA(msg.as_ptr());
             }
         }
-        let m = rx_screen_num.try_recv().unwrap_or(last_output);
-        let current_screen_index: usize;
-        /*
-        if m != last_output {
-            last_output = m;
-            if m >= dxgi.get_screen_count() {
-                last_output = 0;
-                x_offset = 0;
-                info!("resetting");
-                current_screen_index = 0;
-                tx_reset_screen_num
-                    .send(true)
-                    .expect("could not send reset signal");
-                dxgi.set_capture_source_index(last_output).ok();
-            } else {
-                x_offset += dxgi.geometry().0 as i32;
-                current_screen_index = m;
-            }
-            match dxgi.set_capture_source_index(current_screen_index) {
-                Ok(_) => {
-                    info!("changed screen successfully to {}", current_screen_index)
-                }
-                Err(_) => {
-                    info!("Could not set defined source index to {}", m);
-                }
-            };
-        }
-        */
 
         // check if the frame has been read and we need to generate a new one
         unsafe {
@@ -204,7 +149,7 @@ fn main() {
                     );
                     frame.copy_frame(&mut global_buffer.frame_buffer);
 
-                    if let Ok(cursor) = cursor::get_state(x_offset) {
+                    if let Ok(cursor) = cursor::get_state() {
                         std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
                     }
 
@@ -220,7 +165,7 @@ fn main() {
                     std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
                     std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
 
-                    if let Ok(cursor) = cursor::get_state(x_offset) {
+                    if let Ok(cursor) = cursor::get_state() {
                         std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
                     }
 

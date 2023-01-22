@@ -1,9 +1,6 @@
-mod dxgi;
-use dxgi::DXGIManager;
+use ::std::slice;
 
-use std::slice;
-
-use mirror_dto::{CVec, TextureMode};
+use ::mirror_dto::{CVec, TextureMode};
 
 #[derive(Clone, PartialEq)]
 pub enum CaptureMode {
@@ -18,13 +15,13 @@ pub struct Capture {
     resolution: (usize, usize),
 
     // TODO: bitblt
-    dxgi: Option<DXGIManager>,
-    obs: Option<obs_client::Capture>,
+    dxgi: Option<::dxgcap::DXGIManager>,
+    obs: Option<::obs_client::Capture>,
 }
 
 impl Capture {
     pub fn new() -> Result<Self, String> {
-        let dxgi = DXGIManager::new(1000)?;
+        let dxgi = ::dxgcap::DXGIManager::new(1000)?;
         let resolution = dxgi.geometry();
         Ok(Self {
             mode: CaptureMode::DXGI,
@@ -48,13 +45,13 @@ impl Capture {
     pub fn set_mode(&mut self, mode: CaptureMode) -> Result<(), String> {
         match &mode {
             CaptureMode::DXGI => {
-                self.dxgi = Some(DXGIManager::new(1000)?);
+                self.dxgi = Some(::dxgcap::DXGIManager::new(1000)?);
                 self.obs = None;
                 self.mode = mode;
                 Ok(())
             }
             CaptureMode::OBS(window_name) => {
-                let mut obs = obs_client::Capture::new(window_name);
+                let mut obs = ::obs_client::Capture::new(window_name);
                 if obs.try_launch().is_err() {
                     return Err("Failed to enable obs capture".to_string());
                 }
@@ -73,7 +70,7 @@ impl Capture {
                 self.dxgi
                     .as_mut()
                     .unwrap()
-                    .capture_frame::<u8>()
+                    .capture_frame_rgba_components()
                     .map_err(|_| "unable to capture frame".to_string())?,
             )),
             CaptureMode::OBS(_) => Ok(Frame::OBS(
@@ -88,7 +85,7 @@ impl Capture {
 }
 
 pub enum Frame<'a> {
-    DXGI((&'a [u8], (usize, usize))),
+    DXGI((Vec<u8>, (usize, usize))),
     OBS((&'a mut [u8], (usize, usize))),
 }
 

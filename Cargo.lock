@@ -805,6 +805,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dxgcap"
+version = "0.2.4"
+source = "git+https://github.com/ko1N/dxgcap-rs#087177b3abcacc445be8bb76fed985d9c52a41ba"
+dependencies = [
+ "rayon",
+ "winapi",
+ "wio",
+]
+
+[[package]]
 name = "ecolor"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1656,6 +1666,7 @@ dependencies = [
 name = "mirror-guest"
 version = "0.2.0-beta5"
 dependencies = [
+ "dxgcap",
  "log",
  "log-panics",
  "mirror-dto",
@@ -1665,7 +1676,6 @@ dependencies = [
  "trayicon",
  "winapi",
  "winres",
- "wio",
 ]
 
 [[package]]
