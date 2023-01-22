@@ -28,6 +28,18 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.memflow.io | sh
 ```
 Then follow the on-screen-instructions.
 
+## Using mirror as a library
+
+memflow-mirror can also be used as a library / crate in your own projects. Simply add the appropiate entry to your `Cargo.toml`:
+```toml
+[dependencies]
+...
+mirror = { git = "https://github.com/ko1N/memflow-mirror", branch = "master" }
+...
+```
+
+A full example can be found in the [examples folder](mirror/examples/mirror.rs).
+
 ## Demo
 
 [![mirror demo](http://img.youtube.com/vi/H-1wxAeocGA/0.jpg)](http://www.youtube.com/watch?v=H-1wxAeocGA "mirror demo")
