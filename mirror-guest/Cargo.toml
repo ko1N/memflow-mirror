@@ -1,17 +1,19 @@
 [package]
 name = "mirror-guest"
-version = "0.1.0"
+version = "0.2.0-beta5"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 mirror-dto = { path = "../mirror-dto" }
 winapi = { version = "0.3.8", features = ["winuser", "libloaderapi", "d3d11", "d3dcommon", "dxgi", "dxgi1_2", "dxgitype", "ntdef", "unknwnbase", "winerror", "windef", "minwindef", "shellapi", "libloaderapi", "commctrl", "basetsd"] }
-wio = "0.2.2"
-log = "0.4.8"
-trayicon = "0.1.1"
-simple-logging = "2.0.2"
-log-panics = "2.0.0"
+log = "0.4"
+thread-priority = "^0.10"
+trayicon = "0.1"
+simple-logging = "2.0"
+log-panics = "2.0"
+dxgcap = { git = "https://github.com/ko1N/dxgcap-rs" }
+obs-client = { git = "https://github.com/ko1N/obs-rs", branch = "main" }
 
 [build-dependencies]
 winres = "0.1"

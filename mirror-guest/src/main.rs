@@ -1,128 +1,72 @@
 #![windows_subsystem = "windows"]
 
-use std::ffi::CString;
-use std::mem::MaybeUninit;
-use std::slice;
+use ::std::{
+    mem::MaybeUninit,
+    time::{Duration, Instant},
+};
 
-use log::{error, info, LevelFilter};
+use ::log::{info, LevelFilter};
 
-use std::sync::mpsc::channel;
-use trayicon::{MenuBuilder, TrayIconBuilder};
-use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
-use winapi::um::processthreadsapi::GetCurrentProcess;
-use winapi::um::winnt::HANDLE;
-use winapi::um::winuser;
+use ::trayicon::{MenuBuilder, TrayIconBuilder};
+use ::winapi::um::winuser;
 
-mod dxgi;
-use dxgi::DXGIManager;
+use ::mirror_dto::GlobalBufferGuest;
+
+mod capture;
+use capture::{Capture, CaptureMode};
 
 mod cursor;
 
-use mirror_dto::GlobalBuffer;
+mod util;
 
-static mut GLOBAL_BUFFER: Option<GlobalBuffer> = None;
-
-fn raise_gpu_priority() {
-    {
-        let gdi32str = CString::new("gdi32").unwrap();
-        let gdi32 = unsafe { GetModuleHandleA(gdi32str.as_ptr()) };
-        if gdi32.is_null() {
-            error!("Failed to set priority: unable to find gdi32.dll");
-            return;
-        }
-
-        let dkmtschedulestr = CString::new("D3DKMTSetProcessSchedulingPriorityClass").unwrap();
-        let funcptr = unsafe { GetProcAddress(gdi32, dkmtschedulestr.as_ptr()) };
-        if funcptr.is_null() {
-            error!(
-                "Failed to set priority: unable to find D3DKMTSetProcessSchedulingPriorityClass"
-            );
-            return;
-        }
-
-        let func: unsafe extern "C" fn(HANDLE, i32) -> i32 =
-            unsafe { std::mem::transmute(funcptr) };
-        let result = unsafe {
-            func(
-                GetCurrentProcess() as _,
-                5, /* D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME */
-            )
-        };
-        if result < 0 {
-            error!("Failed to set gpu priority");
-        }
-    }
-}
+static mut GLOBAL_BUFFER: Option<GlobalBufferGuest> = None;
 
 fn main() {
+    // setup logging
+    let log_filter = LevelFilter::Trace;
     let log_path = ::std::env::current_exe()
         .unwrap()
         .with_file_name("mirror-guest.log");
-
-    // setup logging
-    let log_filter = LevelFilter::Trace;
-    match simple_logging::log_to_file(&log_path, log_filter) {
-        Ok(_) => info!("logging initialized with level {:?}", log_filter),
-        Err(err) => {
-            panic!("unable to initialize logging: {}", err);
-        }
-    }
+    simple_logging::log_to_file(log_path, log_filter).unwrap();
 
     log_panics::init();
 
     // create tray icon
     #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     enum Events {
-        NextScreen,
         Exit,
     }
     let (send, recv) = std::sync::mpsc::channel::<Events>();
-    let change_screen_menu = MenuBuilder::new().item("Next Screen", Events::NextScreen);
     let _tray_icon = TrayIconBuilder::new()
         .sender(send)
         .icon_from_buffer(include_bytes!("../resources/icon.ico"))
         .tooltip("memflow mirror guest agent")
-        .menu(
-            MenuBuilder::new()
-                .submenu("Change Screen", change_screen_menu)
-                .item("E&xit", Events::Exit),
-        )
+        .menu(MenuBuilder::new().item("E&xit", Events::Exit))
         .build()
         .expect("unable to create tray icon");
-    let mut screen_index = 0;
-    let (tx_screen_num, rx_screen_num) = channel();
-    let (tx_reset_screen_num, rx_reset_screen_num) = channel();
-
     std::thread::spawn(move || {
         recv.iter().for_each(|m| match m {
-            Events::NextScreen => {
-                let should_reset_idx = rx_reset_screen_num.try_recv().unwrap_or(false);
-                if should_reset_idx {
-                    screen_index = 0;
-                }
-                screen_index += 1;
-                tx_screen_num
-                    .send(screen_index)
-                    .expect("could not send on channel");
-            }
             Events::Exit => {
                 std::process::exit(0);
             }
         })
     });
 
-    raise_gpu_priority();
-    let mut dxgi = DXGIManager::new(1000).expect("unable to create dxgi manager");
-    let mut resolution = dxgi.geometry();
+    util::raise_gpu_priority();
+
+    util::raise_process_priority();
+
+    // we start out with dxgi capturing by default
+    let mut capture = Capture::new().expect("unable to start capture");
+    let mut resolution = capture.resolution();
     info!("resolution: {:?}", resolution);
     unsafe {
-        GLOBAL_BUFFER = Some(GlobalBuffer::new(resolution, screen_index));
+        GLOBAL_BUFFER = Some(GlobalBufferGuest::new(resolution, 0));
     }
 
     // main application loop
+    let mut last_capture_mode_check = Instant::now();
     let mut frame_counter = 0u32;
-    let mut last_output = 0;
-    let mut x_offset: i32 = 0;
     loop {
         // tray icon loop
         unsafe {
@@ -133,92 +77,99 @@ fn main() {
                 winuser::DispatchMessageA(msg.as_ptr());
             }
         }
-        let m = rx_screen_num.try_recv().unwrap_or(last_output);
-        let current_screen_index: usize;
-        if m != last_output {
-            last_output = m;
-            if m >= dxgi.get_screen_count() {
-                last_output = 0;
-                x_offset = 0;
-                info!("resetting");
-                current_screen_index = 0;
-                tx_reset_screen_num
-                    .send(true)
-                    .expect("could not send reset signal");
-                dxgi.set_capture_source_index(last_output).ok();
-            } else {
-                x_offset += dxgi.geometry().0 as i32;
-                current_screen_index = m;
-            }
-            match dxgi.set_capture_source_index(current_screen_index) {
-                Ok(_) => {
-                    info!("changed screen successfully to {}", current_screen_index)
-                }
-                Err(_) => {
-                    info!("Could not set defined source index to {}", m);
-                }
-            };
-        }
 
         // check if the frame has been read and we need to generate a new one
-        let update_frame = unsafe {
-            if let Some(global_buffer) = &GLOBAL_BUFFER {
-                let frame_read_counter = std::ptr::read_volatile(&global_buffer.frame_read_counter);
-                frame_read_counter == global_buffer.frame_counter
-            } else {
-                false
-            }
-        };
-
-        // update frame
-        if update_frame {
-            if let Ok(frame) = dxgi.capture_frame() {
-                // frame captured, put into global buffer
-                frame_counter += 1;
-
-                unsafe {
-                    if let Some(global_buffer) = &mut GLOBAL_BUFFER {
-                        if global_buffer.frame_buffer.len() != frame.0.len() * 4 {
-                            info!("changing resolution: {:?}", frame.1);
-
-                            // update frame width and height
-                            resolution.0 = frame.1 .0;
-                            resolution.1 = frame.1 .1;
-                            std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
-                            std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
-
-                            // re-allocate buffer
-                            global_buffer.frame_buffer = vec![0u8; frame.0.len() * 4];
+        unsafe {
+            if let Some(global_buffer) = &mut GLOBAL_BUFFER {
+                if last_capture_mode_check.elapsed() >= Duration::from_secs(1) {
+                    // detect fullscreen window once per second
+                    if global_buffer.config.obs {
+                        if let Some(window_name) = util::find_fullscreen_window() {
+                            if capture.mode() != CaptureMode::OBS(window_name.clone()) {
+                                println!(
+                                    "new fullscreen window detected, trying to switch to obs capture for: {}",
+                                    &window_name
+                                );
+                                capture.set_mode(CaptureMode::OBS(window_name)).ok();
+                            }
+                        } else {
+                            if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
+                                println!("fullscreen window closed, trying to switch to dxgi");
+                                capture.set_mode(CaptureMode::DXGI).ok();
+                            }
                         }
-
-                        // TODO: store frame buffer copy to rewrite it as well down below
-                        global_buffer
-                            .frame_buffer
-                            .copy_from_slice(slice::from_raw_parts(
-                                frame.0.as_ptr() as *const u8,
-                                frame.0.len() * 4,
-                            ));
+                    } else {
+                        if global_buffer.config.dxgi && capture.mode() != CaptureMode::DXGI {
+                            println!("fullscreen window closed, trying to switch to dxgi");
+                            capture.set_mode(CaptureMode::DXGI).ok();
+                        }
                     }
-                }
-            }
-        }
 
-        // write metadata + cursor state in any case to prevent swap-outs on inactivity
-        if let Ok(cursor) = cursor::get_state(x_offset) {
-            unsafe {
-                if let Some(global_buffer) = &mut GLOBAL_BUFFER {
+                    // TODO: update target list in config
+
+                    // reset timer
+                    last_capture_mode_check = Instant::now();
+                }
+
+                // generate new frame first then check if we can update it
+                let captured_frame = capture.capture_frame();
+                let update_frame = {
+                    let frame_read_counter =
+                        std::ptr::read_volatile(&global_buffer.frame_read_counter);
+                    frame_read_counter == global_buffer.frame_counter
+                };
+                if captured_frame.is_ok() && update_frame {
+                    let frame = captured_frame.unwrap();
+
+                    // frame captured, put into global buffer
+                    frame_counter += 1;
+
+                    let frame_resolution = frame.resolution();
+                    let frame_buffer_len = frame.buffer_len();
+
                     // forcefully update metadata to prevent swap-outs
                     std::ptr::write_volatile(
                         &mut global_buffer.marker,
                         [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
                     );
 
+                    if global_buffer.frame_buffer.len() != frame_buffer_len {
+                        info!("Changing resolution: {:?}", frame_resolution);
+
+                        // update frame width and height & re-allocate buffer
+                        resolution = frame_resolution;
+                        global_buffer.frame_buffer = vec![0u8; frame_buffer_len].into();
+                    }
+
+                    std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
+                    std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
+                    std::ptr::write_volatile(
+                        &mut global_buffer.frame_texmode,
+                        frame.texture_mode() as u8,
+                    );
+                    frame.copy_frame(&mut global_buffer.frame_buffer);
+
+                    if let Ok(cursor) = cursor::get_state() {
+                        std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                    }
+
+                    // update frame counter
                     std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
+                } else {
+                    // forcefully update metadata to prevent swap-outs
+                    std::ptr::write_volatile(
+                        &mut global_buffer.marker,
+                        [0xD, 0xE, 0xA, 0xD, 0xB, 0xA, 0xB, 0xE],
+                    );
+
                     std::ptr::write_volatile(&mut global_buffer.width, resolution.0);
                     std::ptr::write_volatile(&mut global_buffer.height, resolution.1);
 
-                    // update cursor
-                    std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                    if let Ok(cursor) = cursor::get_state() {
+                        std::ptr::write_volatile(&mut global_buffer.cursor, cursor);
+                    }
+
+                    std::ptr::write_volatile(&mut global_buffer.frame_counter, frame_counter);
                 }
             }
         }
