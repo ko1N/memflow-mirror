@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use ::std::{fs, path::PathBuf};
+
+use ::serde::{Deserialize, Serialize};
 
 fn default_as_false() -> bool {
     false
@@ -11,19 +12,32 @@ fn default_as_true() -> bool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MirrorConfig {
-    #[serde(default = "default_as_false")]
+    #[serde(default = "default_as_true")]
     pub multithreading: bool,
 
     #[serde(default = "default_as_true")]
     pub obs_capture: bool,
+
+    #[serde(default = "default_as_false")]
+    pub connect_on_startup: bool,
+    pub last_connector: Option<String>,
+    pub last_connector_args: Option<String>,
+    pub last_os: Option<String>,
+    pub last_os_args: Option<String>,
 }
 
 impl Default for MirrorConfig {
     fn default() -> Self {
         Self {
-            multithreading: false,
+            multithreading: true,
 
             obs_capture: true,
+
+            connect_on_startup: false,
+            last_connector: None,
+            last_connector_args: None,
+            last_os: None,
+            last_os_args: None,
         }
     }
 }
@@ -34,7 +48,7 @@ impl MirrorConfig {
             Ok(s) => s,
             Err(_) => {
                 let s = Self::default();
-                s.save();
+                s.save().ok();
                 s
             }
         }

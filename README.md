@@ -13,7 +13,7 @@ In case you encounter a `No such file or directory` error from the build.rs scri
 
 Run the mirror tool with:
 ```bash
-cargo run --release --bin mirror --all-features -- -vv --connector kvm --os win32
+cargo run --release --bin mirror --all-features -- -vv
 ```
 
 It is recommended to use the [memflow-kvm](https://github.com/memflow/memflow-kvm) connector as it currently has the best performance.
@@ -31,6 +31,11 @@ Then follow the on-screen-instructions.
 ## Demo
 
 [![mirror demo](http://img.youtube.com/vi/H-1wxAeocGA/0.jpg)](http://www.youtube.com/watch?v=H-1wxAeocGA "mirror demo")
+
+## Screenshots
+
+![screenshot](docs/1674405186.png)
+![screenshot](docs/1674405216.png)
 
 ## Credits
 

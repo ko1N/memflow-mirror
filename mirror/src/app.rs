@@ -1,54 +1,50 @@
-use ::std::io::Cursor;
-
 use ::log::warn;
 
-use ::epaint::{Color32, Rect, TextureHandle};
-
-use ::egui::pos2;
+use ::egui_dock::{DockArea, StyleBuilder, Tree};
 use ::egui_notify::Toasts;
 
 mod frame_history;
 use frame_history::FrameHistory;
 
-use crate::{
-    capture_reader::{Capture, ThreadedCapture},
-    MirrorConfig, SequentialCapture,
-};
+mod tab_viewer;
+use tab_viewer::{CaptureTab, TabViewer};
+
+use crate::MirrorConfig;
 
 pub struct MirrorApp {
     _toasts: Toasts,
     frame_history: FrameHistory,
+    tree: Tree<CaptureTab>,
+    tree_len: usize,
 
     config: MirrorConfig,
-    capture: Box<dyn Capture>,
-
-    frame_counter: u32,
-    frame_texture: Option<TextureHandle>,
-    cursor: Option<TextureHandle>,
 
     window_stats: bool,
     window_settings: bool,
 }
 
 impl MirrorApp {
-    pub fn new(
-        _: &eframe::CreationContext<'_>,
-        config: MirrorConfig,
-        capture: Box<dyn Capture>,
-    ) -> Self {
+    pub fn new(_: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customized the look at feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+
+        let config = MirrorConfig::load_or_default();
+        let capture_tab = match CaptureTab::connect(0, &config) {
+            Ok(capture_tab) => capture_tab,
+            Err(_) => {
+                //config.connect_on_startup = false;
+                //config.save().ok();
+                CaptureTab::new(0, &config)
+            }
+        };
 
         Self {
             _toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
             frame_history: FrameHistory::default(),
+            tree: Tree::new(vec![capture_tab]),
+            tree_len: 1,
 
             config,
-            capture,
-
-            frame_counter: 0,
-            frame_texture: None,
-            cursor: None,
 
             window_stats: false,
             window_settings: false,
@@ -86,65 +82,27 @@ impl eframe::App for MirrorApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::warn_if_debug_build(ui);
 
-            ui.vertical_centered(|ui| {
-                // update internal state, then read frame_counter and image_data
-                self.capture.update();
+            let mut added_nodes = Vec::new();
+            DockArea::new(&mut self.tree)
+                .style(
+                    StyleBuilder::from_egui(ctx.style().as_ref())
+                        .show_add_buttons(true)
+                        .expand_tabs(true)
+                        .build(),
+                )
+                .show(
+                    ctx,
+                    &mut TabViewer {
+                        added_nodes: &mut added_nodes,
+                        config: &mut self.config,
+                    },
+                );
 
-                let frame_counter = self.capture.frame_counter();
-
-                // only update frame_texture on demand
-                if frame_counter != self.frame_counter {
-                    let frame = self.capture.image_data();
-                    self.frame_counter = frame_counter;
-
-                    if let Some(frame_texture) = &mut self.frame_texture {
-                        frame_texture.set(frame, egui::TextureOptions::LINEAR);
-                    } else {
-                        self.frame_texture = Some(ui.ctx().load_texture(
-                            "frame",
-                            frame,
-                            egui::TextureOptions::LINEAR,
-                        ));
-                    }
-                }
-
-                // render frame_texture
-                if let Some(frame_texture) = &self.frame_texture {
-                    let texture_size = frame_texture.size();
-                    let aspect_ratio = texture_size[0] as f32 / texture_size[1] as f32;
-                    let desired_height = ui.available_height();
-                    let desired_width = desired_height * aspect_ratio;
-
-                    let render_position = ui
-                        .add(egui::Image::new(
-                            frame_texture.id(),
-                            [desired_width, desired_height],
-                        ))
-                        .rect;
-
-                    // render cursor on top of frame
-                    let cursor_data = self.capture.cursor_data();
-                    if cursor_data.is_visible != 0 {
-                        let cursor = self.cursor_texture(ui);
-
-                        let (x, y, w, h) = {
-                            let scale_x = desired_width / texture_size[0] as f32;
-                            let scale_y = desired_height / texture_size[1] as f32;
-                            (
-                                render_position.left() + cursor_data.x as f32 * scale_x,
-                                render_position.top() + cursor_data.y as f32 * scale_y,
-                                cursor.size()[0] as f32 * scale_x,
-                                cursor.size()[1] as f32 * scale_y,
-                            )
-                        };
-                        ui.painter().image(
-                            cursor.id(),
-                            Rect::from_min_max(pos2(x, y), pos2(x + w, y + h)),
-                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                            Color32::WHITE,
-                        );
-                    }
-                }
+            added_nodes.drain(..).for_each(|node| {
+                self.tree.set_focused_node(node);
+                self.tree
+                    .push_to_focused_leaf(CaptureTab::new(self.tree_len, &self.config));
+                self.tree_len += 1;
             });
         });
 
@@ -166,29 +124,27 @@ impl eframe::App for MirrorApp {
                 .collapsible(false)
                 .open(&mut window_settings)
                 .show(ctx, |ui| {
-                    let mut multithreading = self.capture.multithreading();
+                    let mut connect_on_startup = self.config.connect_on_startup;
+                    if ui
+                        .checkbox(&mut connect_on_startup, "Auto-connect on startup")
+                        .changed()
+                    {
+                        self.config.connect_on_startup = connect_on_startup;
+                        self.config.save().map_err(|err| warn!("{}", err)).ok();
+                    }
+
+                    ui.separator();
+
+                    let mut multithreading = self.config.multithreading;
                     if ui
                         .checkbox(&mut multithreading, "Multithreaded Capture")
                         .changed()
                     {
-                        let os = self.capture.os();
-
-                        // re-create capture
-                        if multithreading {
-                            self.capture = Box::new(ThreadedCapture::new(os));
-                        } else {
-                            self.capture = Box::new(SequentialCapture::new(os));
-                        }
-
-                        // reapply configuration
-                        self.capture.set_obs_capture(self.config.obs_capture);
-
-                        // change value in config
                         self.config.multithreading = multithreading;
                         self.config.save().map_err(|err| warn!("{}", err)).ok();
                     }
 
-                    let mut obs_capture = self.capture.obs_capture();
+                    let mut obs_capture = self.config.obs_capture;
                     if ui
                         .checkbox(
                             &mut obs_capture,
@@ -196,7 +152,6 @@ impl eframe::App for MirrorApp {
                         )
                         .changed()
                     {
-                        self.capture.set_obs_capture(obs_capture);
                         self.config.obs_capture = obs_capture;
                         self.config.save().map_err(|err| warn!("{}", err)).ok();
                     };
@@ -205,24 +160,5 @@ impl eframe::App for MirrorApp {
         }
 
         ctx.request_repaint();
-    }
-}
-
-impl MirrorApp {
-    fn cursor_texture<'a>(&mut self, ui: &'a mut egui::Ui) -> &egui::TextureHandle {
-        self.cursor.get_or_insert_with(|| {
-            // Load the texture only once.
-            let image = image::load(
-                Cursor::new(&include_bytes!("../resources/cursor.png")[..]),
-                image::ImageFormat::Png,
-            )
-            .unwrap();
-            let size = [image.width() as _, image.height() as _];
-            let image_buffer = image.to_rgba8();
-            let pixels = image_buffer.as_flat_samples();
-            let cursor_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
-            ui.ctx()
-                .load_texture("cursor", cursor_image, Default::default())
-        })
     }
 }
