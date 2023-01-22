@@ -66,6 +66,7 @@ fn main() -> Result<()> {
 
     // initialize capture
     let mut capture = SequentialCapture::new(os);
+    // let mut capture = ThreadedCapture::new(os); // Alternatively a multithreaded capture can be used
     capture.set_obs_capture(true);
 
     let mut frame_counter = 0;
