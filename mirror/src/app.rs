@@ -1,20 +1,25 @@
 use ::std::io::Cursor;
 
-use epaint::{Color32, Rect, TextureHandle};
+use ::log::warn;
 
-use egui::pos2;
-use egui_notify::Toasts;
+use ::epaint::{Color32, Rect, TextureHandle};
+
+use ::egui::pos2;
+use ::egui_notify::Toasts;
 
 mod frame_history;
 use frame_history::FrameHistory;
 
-use crate::capture_reader::{Capture, ThreadedCapture};
-use crate::SequentialCapture;
+use crate::{
+    capture_reader::{Capture, ThreadedCapture},
+    MirrorConfig, SequentialCapture,
+};
 
 pub struct MirrorApp {
     _toasts: Toasts,
     frame_history: FrameHistory,
 
+    config: MirrorConfig,
     capture: Box<dyn Capture>,
 
     frame_counter: u32,
@@ -26,7 +31,11 @@ pub struct MirrorApp {
 }
 
 impl MirrorApp {
-    pub fn new(_: &eframe::CreationContext<'_>, capture: Box<dyn Capture>) -> Self {
+    pub fn new(
+        _: &eframe::CreationContext<'_>,
+        config: MirrorConfig,
+        capture: Box<dyn Capture>,
+    ) -> Self {
         // This is also where you can customized the look at feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
@@ -34,6 +43,7 @@ impl MirrorApp {
             _toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
             frame_history: FrameHistory::default(),
 
+            config,
             capture,
 
             frame_counter: 0,
@@ -163,9 +173,6 @@ impl eframe::App for MirrorApp {
                     {
                         let os = self.capture.os();
 
-                        // backup configuration
-                        let enable_obs = self.capture.obs_capture();
-
                         // re-create capture
                         if multithreading {
                             self.capture = Box::new(ThreadedCapture::new(os));
@@ -174,18 +181,24 @@ impl eframe::App for MirrorApp {
                         }
 
                         // reapply configuration
-                        self.capture.set_obs_capture(enable_obs);
+                        self.capture.set_obs_capture(self.config.obs_capture);
+
+                        // change value in config
+                        self.config.multithreading = multithreading;
+                        self.config.save().map_err(|err| warn!("{}", err)).ok();
                     }
 
-                    let mut enable_obs = self.capture.obs_capture();
+                    let mut obs_capture = self.capture.obs_capture();
                     if ui
                         .checkbox(
-                            &mut enable_obs,
+                            &mut obs_capture,
                             "Enable OBS Capture (when a Fullscreen App is running)",
                         )
                         .changed()
                     {
-                        self.capture.set_obs_capture(enable_obs);
+                        self.capture.set_obs_capture(obs_capture);
+                        self.config.obs_capture = obs_capture;
+                        self.config.save().map_err(|err| warn!("{}", err)).ok();
                     };
                 });
             self.window_settings = window_settings;

@@ -1,4 +1,7 @@
+use ::frame_counter::FrameCounter;
 use ::log::{info, warn};
+use ::mirror_dto::{CaptureConfig, Cursor, GlobalBufferHost};
+use ::parking_lot::RwLock;
 use ::std::{
     convert::TryInto,
     sync::atomic::{AtomicBool, Ordering},
@@ -6,9 +9,6 @@ use ::std::{
     thread,
     thread::JoinHandle,
 };
-use frame_counter::FrameCounter;
-use mirror_dto::{CaptureConfig, Cursor, GlobalBufferHost};
-use parking_lot::RwLock;
 
 use ::memflow::prelude::v1::*;
 

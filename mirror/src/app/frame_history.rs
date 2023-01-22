@@ -1,4 +1,4 @@
-use egui::util::History;
+use ::egui::util::History;
 
 pub struct FrameHistory {
     frame_times: History<f32>,

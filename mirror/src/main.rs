@@ -1,14 +1,16 @@
-use clap::{crate_authors, crate_version, Arg, ArgAction, Command};
-use log::{warn, Level};
+use ::clap::{crate_authors, crate_version, Arg, ArgAction, Command};
+use ::log::{warn, Level};
 
-use memflow::prelude::v1::Result;
-use memflow::prelude::v1::*;
+use ::memflow::prelude::v1::{Result, *};
 
 mod app;
 pub use app::MirrorApp;
 
 mod capture_reader;
-pub use capture_reader::SequentialCapture;
+pub use capture_reader::{Capture, SequentialCapture, ThreadedCapture};
+
+mod config;
+use config::MirrorConfig;
 
 fn main() -> Result<()> {
     let matches = Command::new("memflow-mirror")
@@ -54,6 +56,9 @@ fn main() -> Result<()> {
         warn!("Unable to set main thread priority");
     }
 
+    // load config
+    let config = MirrorConfig::load_or_default();
+
     // TODO: configuration via ui
     // parse args
     let conn_iter = matches
@@ -77,7 +82,14 @@ fn main() -> Result<()> {
     let os = inventory.builder().os_chain(chain).build()?;
 
     // create capture instance
-    let reader = Box::new(SequentialCapture::new(os));
+    let mut capture: Box<dyn Capture> = if config.multithreading {
+        Box::new(ThreadedCapture::new(os))
+    } else {
+        Box::new(SequentialCapture::new(os))
+    };
+
+    // update capture configuration
+    capture.set_obs_capture(config.obs_capture);
 
     // start ui
     //tracing_subscriber::fmt::init();
@@ -86,7 +98,7 @@ fn main() -> Result<()> {
     eframe::run_native(
         "memflow mirror",
         native_options,
-        Box::new(|cc| Box::new(MirrorApp::new(cc, reader))),
+        Box::new(|cc| Box::new(MirrorApp::new(cc, config, capture))),
     );
 
     Ok(())
