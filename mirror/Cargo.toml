@@ -11,7 +11,7 @@ memflow = { version = "^0.2.0-beta9", features = ["plugins"] }
 mirror-dto = { path = "../mirror-dto" }
 parking_lot = { version = "0.12", features = [ "hardware-lock-elision" ] }
 frame_counter = "0.1.2"
-pelite = "0.10.0"
+pelite = "^0.9.0"
 
 # bin
 clap = { version = "^4.0", features = ["cargo"], optional = true }

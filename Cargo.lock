@@ -733,15 +733,15 @@ name = "dataview"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47a802a2cad0ff4dfc4f3110da174b7a6928c315cae523e88638cfb72941b4d5"
+dependencies = [
+ "derive_pod",
+]
 
 [[package]]
 name = "dataview"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50eb3a329e19d78c3a3dfa4ec5a51ecb84fa3a20c06edad04be25356018218f9"
-dependencies = [
- "derive_pod",
-]
 
 [[package]]
 name = "derive_pod"
@@ -1573,7 +1573,7 @@ dependencies = [
  "memmap",
  "no-std-compat",
  "once_cell",
- "pelite 0.9.0",
+ "pelite",
  "rangemap",
  "serde",
  "smallvec",
@@ -1675,7 +1675,7 @@ dependencies = [
  "memflow",
  "mirror-dto",
  "parking_lot 0.12.1",
- "pelite 0.10.0",
+ "pelite",
  "serde",
  "simplelog",
  "thread-priority",
@@ -2048,17 +2048,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c270b1a0c279bbcb4cff3d2294121731c48ee68f0435d26cf71018a853cb890"
 dependencies = [
  "dataview 0.1.2",
- "no-std-compat",
- "pelite-macros",
-]
-
-[[package]]
-name = "pelite"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88dccf4bd32294364aeb7bd55d749604450e9db54605887551f21baea7617685"
-dependencies = [
- "dataview 1.0.1",
  "libc",
  "no-std-compat",
  "pelite-macros",
