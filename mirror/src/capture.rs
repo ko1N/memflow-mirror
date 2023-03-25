@@ -9,6 +9,8 @@ use ::std::{
     thread,
     thread::JoinHandle,
 };
+use pelite::pattern;
+use pelite::pattern::Atom;
 
 use ::memflow::prelude::v1::*;
 
@@ -350,15 +352,21 @@ impl CaptureProcess {
                 }
             };
 
-            let marker_offs = match Self::find_marker(&module_buf) {
-                Ok(marker_offs) => marker_offs,
+            // 0D 0E 0A 0D 0B 0A 0B 0E ? ? ? ? 0 0 0 0
+            // since the global buffer contains 2 resolution values (width and height) right after the marker
+            // and the resolution is definatly smaller than u32::MAX we can narrow down the search
+            // by adding those trailing 0's to the scan
+            let resolution_pattern =
+                pattern!("0D 0E 0A 0D 0B 0A 0B 0E ? ? ? ? 00 00 00 00 ? ? ? ? 00 00 00 00");
+
+            let marker_addr = match Self::find_module_pattern(&module_buf, resolution_pattern) {
+                Ok(marker_va) => Address::from(marker_va),
                 Err(err) => {
                     err.log_error("unable to find marker in binary");
                     continue;
                 }
             };
-            info!("marker found at {:x} + {:x}", module_info.base, marker_offs);
-            let marker_addr = module_info.base + marker_offs;
+            info!("marker found at {:x}", marker_addr);
 
             return Ok(Self {
                 process,
@@ -373,22 +381,32 @@ impl CaptureProcess {
         Err(Error(ErrorOrigin::OsLayer, ErrorKind::NotFound))
     }
 
-    fn find_marker(module_buf: &[u8]) -> Result<usize> {
-        use ::regex::bytes::*;
+    /// Finds a pattern within a given module buffer
+    ///
+    /// Returns the virtual address of the match
+    fn find_module_pattern(module_buf: &[u8], pattern: &[Atom]) -> Result<Address> {
+        #[cfg(target_pointer_width = "32")]
+        use ::pelite::pe32::{Pe, PeView};
+        #[cfg(target_pointer_width = "64")]
+        use ::pelite::pe64::{Pe, PeView};
 
-        // 0D 0E 0A 0D 0B 0A 0B 0E ? ? ? ? 0 0 0 0
-        // since the global buffer contains 2 resolution values (width and height) right after the marker
-        // and the resolution is definatly smaller than u32::MAX we can narrow down the search
-        // by adding those trailing 0's to the scan
-        let re = Regex::new("(?-u)\\x0D\\x0E\\x0A\\x0D\\x0B\\x0A\\x0B\\x0E(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00(?s:.)(?s:.)(?s:.)(?s:.)\\x00\\x00\\x00\\x00")
-            .expect("malformed marker signature");
-        let buf_offs = re
-            .find_iter(module_buf)
-            .next()
-            .ok_or(Error(ErrorOrigin::VirtualMemory, ErrorKind::NotFound))?
-            .start();
+        let pe = PeView::from_bytes(module_buf)
+            .map_err(|_| Error(ErrorOrigin::Memory, ErrorKind::InvalidArgument))?;
 
-        Ok(buf_offs)
+        let mut match_cursor = vec![0u32; 1];
+
+        let found_resolution =
+            pe.scanner()
+                .finds(pattern, 0..module_buf.len() as _, &mut match_cursor);
+
+        if found_resolution {
+            let virt_addr = pe
+                .rva_to_va(match_cursor[0])
+                .expect("unable to convert offset to virtual address");
+            Ok(Address::from(virt_addr))
+        } else {
+            Err(Error(ErrorOrigin::Memory, ErrorKind::NotFound))
+        }
     }
 
     pub fn is_alive(&mut self) -> bool {
