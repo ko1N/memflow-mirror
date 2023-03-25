@@ -13,7 +13,7 @@ trayicon = "0.1"
 simple-logging = "2.0"
 log-panics = "2.0"
 dxgcap = { git = "https://github.com/ko1N/dxgcap-rs" }
-obs-client = { git = "https://github.com/ko1N/obs-rs", branch = "main" }
+obs-client = { git = "https://github.com/not-matthias/obs-rs", branch = "main" }
 
 [build-dependencies]
 winres = "0.1"

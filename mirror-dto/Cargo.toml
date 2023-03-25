@@ -5,4 +5,4 @@ authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-memflow = { version = "^0.2.0-beta9", features = ["plugins"] }
+memflow = { version = "=0.2.0-beta10", features = ["plugins"] }

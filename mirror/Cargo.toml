@@ -1,13 +1,13 @@
 [package]
 name = "mirror"
-version = "0.2.0-beta5"
+version = "0.2.0-beta10"
 authors = ["ko1N <ko1N1337@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 # memflow
 log = "^0.4"
-memflow = { version = "^0.2.0-beta9", features = ["plugins"] }
+memflow = { version = "=0.2.0-beta10", features = ["plugins"] }
 mirror-dto = { path = "../mirror-dto" }
 parking_lot = { version = "0.12", features = [ "hardware-lock-elision" ] }
 frame_counter = "0.1.2"
@@ -16,7 +16,7 @@ regex = "^1.5" # TODO: replace with pattern-scanner lib
 # bin
 clap = { version = "^4.0", features = ["cargo"], optional = true }
 simplelog = { version = "^0.12", optional = true }
-thread-priority = { version = "^0.10", optional = true }
+thread-priority = { version = "^0.13", optional = true }
 
 # gui
 egui = "0.20.0"
@@ -28,22 +28,18 @@ image = { version = "^0.24", optional = true }
 
 # configs
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.5"
-dirs = "4.0"
+toml = "^0.7"
+dirs = "^5.0"
 
 [dev-dependencies]
 log = "^0.4"
 clap = { version = "^4.0", features = ["cargo"] }
 simplelog = { version = "^0.12" }
-memflow = { version = "^0.2.0-beta9", features = ["plugins"] }
+memflow = { version = "=0.2.0-beta10", features = ["plugins"] }
 
 [features]
 default = []
 mirror-bin = [ "dep:clap", "dep:simplelog", "dep:thread-priority", "dep:eframe", "dep:epaint", "dep:egui-notify", "dep:image" ]
-
-[lib]
-name = "mirror"
-create-type = [ "lib" ]
 
 [[bin]]
 name = "mirror"
