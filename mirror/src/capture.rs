@@ -2,6 +2,8 @@ use ::frame_counter::FrameCounter;
 use ::log::{info, warn};
 use ::mirror_dto::{CaptureConfig, Cursor, GlobalBufferHost};
 use ::parking_lot::RwLock;
+use ::pelite::pattern;
+use ::pelite::pattern::Atom;
 use ::std::{
     convert::TryInto,
     sync::atomic::{AtomicBool, Ordering},
@@ -9,8 +11,6 @@ use ::std::{
     thread,
     thread::JoinHandle,
 };
-use pelite::pattern;
-use pelite::pattern::Atom;
 
 use ::memflow::prelude::v1::*;
 
@@ -120,7 +120,7 @@ impl Capture for SequentialCapture {
             )
         };
 
-        egui::ImageData::Color(egui::ColorImage { size, pixels })
+        egui::ImageData::Color(Arc::new(egui::ColorImage { size, pixels }))
     }
 
     fn cursor_data(&self) -> Cursor {
@@ -214,7 +214,7 @@ impl Capture for ThreadedCapture {
             )
         };
 
-        egui::ImageData::Color(egui::ColorImage { size, pixels })
+        egui::ImageData::Color(Arc::new(egui::ColorImage { size, pixels }))
     }
 
     fn cursor_data(&self) -> Cursor {

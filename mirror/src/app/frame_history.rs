@@ -81,6 +81,8 @@ impl FrameHistory {
             rounding: style.rounding,
             fill: ui.visuals().extreme_bg_color,
             stroke: ui.style().noninteractive().bg_stroke,
+            fill_texture_id: TextureId::default(), // ?
+            uv: Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
         }));
 
         let rect = rect.shrink(4.0);
@@ -96,7 +98,7 @@ impl FrameHistory {
             let cpu_usage = to_screen.inverse().transform_pos(pointer_pos).y;
             let text = format!("{:.1} ms", 1e3 * cpu_usage);
             shapes.push(Shape::text(
-                &ui.fonts(),
+                &ui.fonts(|fonts| fonts.clone()),
                 pos2(rect.left(), y),
                 egui::Align2::LEFT_BOTTOM,
                 text,
@@ -107,7 +109,7 @@ impl FrameHistory {
 
         let circle_color = color;
         let radius = 2.0;
-        let right_side_time = ui.input().time; // Time at right side of screen
+        let right_side_time = ui.input(|i| i.time); // Time at right side of screen
 
         for (time, cpu_usage) in history.iter() {
             let age = (right_side_time - time) as f32;

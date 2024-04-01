@@ -1,6 +1,6 @@
 use ::log::warn;
 
-use ::egui_dock::{DockArea, StyleBuilder, Tree};
+use ::egui_dock::{DockArea, DockState, Style};
 use ::egui_notify::Toasts;
 
 mod frame_history;
@@ -14,7 +14,7 @@ use crate::MirrorConfig;
 pub struct MirrorApp {
     _toasts: Toasts,
     frame_history: FrameHistory,
-    tree: Tree<CaptureTab>,
+    tree: DockState<CaptureTab>,
     tree_len: usize,
 
     config: MirrorConfig,
@@ -41,7 +41,7 @@ impl MirrorApp {
         Self {
             _toasts: Toasts::default().with_anchor(egui_notify::Anchor::BottomRight),
             frame_history: FrameHistory::default(),
-            tree: Tree::new(vec![capture_tab]),
+            tree: DockState::new(vec![capture_tab]),
             tree_len: 1,
 
             config,
@@ -55,14 +55,14 @@ impl MirrorApp {
 impl eframe::App for MirrorApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.frame_history
-            .on_new_frame(ctx.input().time, frame.info().cpu_usage);
+            .on_new_frame(ctx.input(|i| i.time), frame.info().cpu_usage);
 
         #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
-                        frame.close();
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
                 ui.menu_button("Windows", |ui| {
@@ -84,12 +84,12 @@ impl eframe::App for MirrorApp {
 
             let mut added_nodes = Vec::new();
             DockArea::new(&mut self.tree)
-                .style(
-                    StyleBuilder::from_egui(ctx.style().as_ref())
-                        .show_add_buttons(true)
-                        .expand_tabs(true)
-                        .build(),
-                )
+                .show_add_buttons(true)
+                .style({
+                    let mut style = Style::from_egui(ctx.style().as_ref());
+                    style.tab_bar.fill_tab_bar = true;
+                    style
+                })
                 .show(
                     ctx,
                     &mut TabViewer {
@@ -98,8 +98,8 @@ impl eframe::App for MirrorApp {
                     },
                 );
 
-            added_nodes.drain(..).for_each(|node| {
-                self.tree.set_focused_node(node);
+            added_nodes.drain(..).for_each(|(surface, node)| {
+                self.tree.set_focused_node_and_surface((surface, node));
                 self.tree
                     .push_to_focused_leaf(CaptureTab::new(self.tree_len, &self.config));
                 self.tree_len += 1;

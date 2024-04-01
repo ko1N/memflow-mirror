@@ -8,7 +8,7 @@ edition = "2018"
 mirror-dto = { path = "../mirror-dto" }
 winapi = { version = "0.3.8", features = ["winuser", "libloaderapi", "d3d11", "d3dcommon", "dxgi", "dxgi1_2", "dxgitype", "ntdef", "unknwnbase", "winerror", "windef", "minwindef", "shellapi", "libloaderapi", "commctrl", "basetsd"] }
 log = "0.4"
-thread-priority = "^0.10"
+thread-priority = "0.15"
 trayicon = "0.1"
 simple-logging = "2.0"
 log-panics = "2.0"

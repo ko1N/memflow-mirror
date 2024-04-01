@@ -78,7 +78,8 @@ fn main() -> Result<()> {
         "memflow mirror",
         native_options,
         Box::new(|cc| Box::new(MirrorApp::new(cc))),
-    );
+    )
+    .expect("could not start gui");
 
     Ok(())
 }

@@ -1,7 +1,8 @@
 use ::std::io::Cursor;
 
-use ::egui::pos2;
+use ::egui_dock::egui::{self, pos2};
 use ::egui_dock::NodeIndex;
+use ::egui_dock::SurfaceIndex;
 use ::epaint::{Color32, Rect, TextureHandle};
 
 use ::memflow::prelude::v1::*;
@@ -12,7 +13,7 @@ use crate::{
 };
 
 pub struct TabViewer<'a> {
-    pub(crate) added_nodes: &'a mut Vec<NodeIndex>,
+    pub(crate) added_nodes: &'a mut Vec<(SurfaceIndex, NodeIndex)>,
     pub(crate) config: &'a mut MirrorConfig,
 }
 
@@ -42,8 +43,8 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         }
     }
 
-    fn on_add(&mut self, node: NodeIndex) {
-        self.added_nodes.push(node);
+    fn on_add(&mut self, surface: SurfaceIndex, node: NodeIndex) {
+        self.added_nodes.push((surface, node));
     }
 }
 
@@ -230,10 +231,10 @@ impl CaptureTab {
                 let desired_width = desired_height * aspect_ratio;
 
                 let render_position = ui
-                    .add(egui::Image::new(
+                    .add(egui::Image::new(egui::load::SizedTexture::new(
                         frame_texture.id(),
                         [desired_width, desired_height],
-                    ))
+                    )))
                     .rect;
 
                 // render cursor on top of frame
